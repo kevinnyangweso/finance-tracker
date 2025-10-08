@@ -83,6 +83,18 @@ text
 - Maven 3.6+
 - IDE (IntelliJ IDEA recommended)
 
+# Database Setup
+- Configure your database connection in `application.properties`
+- Create a `.env` file with your database credentials
+- The application now uses custom exceptions and validation
+
+# API Documentation
+- UserController endpoints are available at `/api/users`
+
+# Exception Handling
+- Custom exceptions for business logic
+- Global exception handler for consistent error responses
+
 ## 🚀 Quick Start
 
 ### 1. Clone and Setup
