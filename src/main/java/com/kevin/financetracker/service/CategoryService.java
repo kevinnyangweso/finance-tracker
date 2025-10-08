@@ -1,5 +1,8 @@
 package com.kevin.financetracker.service;
 
+import com.kevin.financetracker.exception.DuplicateResourceException;
+import com.kevin.financetracker.exception.ResourceNotFoundException;
+import com.kevin.financetracker.exception.ValidationException;
 import com.kevin.financetracker.model.Category;
 import com.kevin.financetracker.model.CategoryType;
 import com.kevin.financetracker.model.User;
@@ -28,11 +31,11 @@ public class CategoryService {
     // Create a new category
     public Category createCategory(Long userId, Category category) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         // Check if category name already exists for this user
         if (categoryRepository.existsByUserAndName(user, category.getName())) {
-            throw new IllegalArgumentException("Category name already exists for this user: " + category.getName());
+            throw new DuplicateResourceException("Category name already exists for this user: " + category.getName());
         }
 
         category.setUser(user);
@@ -42,11 +45,11 @@ public class CategoryService {
     // Create a subcategory
     public Category createSubcategory(Long parentCategoryId, Category subcategory) {
         Category parentCategory = categoryRepository.findById(parentCategoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Parent category not found with id: " + parentCategoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + parentCategoryId));
 
         // Check if subcategory name already exists for this user
         if (categoryRepository.existsByUserAndName(parentCategory.getUser(), subcategory.getName())) {
-            throw new IllegalArgumentException("Category name already exists: " + subcategory.getName());
+            throw new DuplicateResourceException("Category name already exists: " + subcategory.getName());
         }
 
         subcategory.setUser(parentCategory.getUser());
@@ -74,7 +77,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<Category> getCategoriesByUserAndType(Long userId, CategoryType type) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return categoryRepository.findByUserAndType(user, type);
     }
 
@@ -82,7 +85,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<Category> getTopLevelCategoriesByUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return categoryRepository.findByUserAndParentCategoryIsNull(user);
     }
 
@@ -90,21 +93,21 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<Category> getSubcategories(Long parentCategoryId) {
         Category parentCategory = categoryRepository.findById(parentCategoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Parent category not found with id: " + parentCategoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + parentCategoryId));
         return categoryRepository.findByParentCategory(parentCategory);
     }
 
     // Update category
     public Category updateCategory(Long categoryId, Category categoryDetails) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + categoryId));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
 
         // Update fields if provided
         if (categoryDetails.getName() != null) {
             // Check if new name is unique for this user
             if (!category.getName().equals(categoryDetails.getName()) &&
                     categoryRepository.existsByUserAndName(category.getUser(), categoryDetails.getName())) {
-                throw new IllegalArgumentException("Category name already exists: " + categoryDetails.getName());
+                throw new DuplicateResourceException("Category name already exists: " + categoryDetails.getName());
             }
             category.setName(categoryDetails.getName());
         }
@@ -121,17 +124,17 @@ public class CategoryService {
     // Delete category
     public void deleteCategory(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + id));
 
         // Check if category has transactions or budgets
         if (!category.getTransactions().isEmpty()) {
-            throw new IllegalStateException("Cannot delete category with existing transactions");
+            throw new ValidationException("Cannot delete category with existing transactions");
         }
         if (!category.getBudgets().isEmpty()) {
-            throw new IllegalStateException("Cannot delete category with existing budgets");
+            throw new ValidationException("Cannot delete category with existing budgets");
         }
         if (!category.getSubCategories().isEmpty()) {
-            throw new IllegalStateException("Cannot delete category with existing subcategories");
+            throw new ValidationException("Cannot delete category with existing subcategories");
         }
 
         categoryRepository.delete(category);
@@ -141,7 +144,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<Category> searchCategoriesByName(Long userId, String name) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return categoryRepository.findByUserAndNameContainingIgnoreCase(user, name);
     }
 }

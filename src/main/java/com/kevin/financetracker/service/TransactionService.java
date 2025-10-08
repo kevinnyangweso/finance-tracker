@@ -1,5 +1,7 @@
 package com.kevin.financetracker.service;
 
+import com.kevin.financetracker.exception.ResourceNotFoundException;
+import com.kevin.financetracker.exception.ValidationException;
 import com.kevin.financetracker.model.*;
 import com.kevin.financetracker.repository.TransactionRepository;
 import com.kevin.financetracker.repository.AccountRepository;
@@ -40,24 +42,24 @@ public class TransactionService {
     // Create a new transaction
     public Transaction createTransaction(Long userId, Transaction transaction) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         Account account = accountRepository.findById(transaction.getAccount().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         // Verify account belongs to user
         if (!account.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Account does not belong to user");
+            throw new ValidationException("Account does not belong to user");
         }
 
         Category category = null;
         if (transaction.getCategory() != null && transaction.getCategory().getId() != null) {
             category = categoryRepository.findById(transaction.getCategory().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
             // Verify category belongs to user
             if (!category.getUser().getId().equals(userId)) {
-                throw new IllegalArgumentException("Category does not belong to user");
+                throw new ValidationException("Category does not belong to user");
             }
         }
 
@@ -88,7 +90,7 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<Transaction> getTransactionsByUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return transactionRepository.findByUser(user);
     }
 
@@ -96,7 +98,7 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<Transaction> getTransactionsByUserAndDateRange(Long userId, LocalDateTime start, LocalDateTime end) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return transactionRepository.findByUserAndTransactionDateBetween(user, start, end);
     }
 
@@ -104,14 +106,14 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public List<Transaction> getTransactionsByUserAndType(Long userId, TransactionType type) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return transactionRepository.findByUserAndType(user, type);
     }
 
     // Update transaction
     public Transaction updateTransaction(Long transactionId, Transaction transactionDetails) {
         Transaction transaction = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found with id: " + transactionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
 
         // Store old values for balance adjustment
         BigDecimal oldAmount = transaction.getAmount();
@@ -133,7 +135,7 @@ public class TransactionService {
         }
         if (transactionDetails.getCategory() != null && transactionDetails.getCategory().getId() != null) {
             Category category = categoryRepository.findById(transactionDetails.getCategory().getId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
             transaction.setCategory(category);
         }
         if (transactionDetails.getNotes() != null) {
@@ -150,7 +152,7 @@ public class TransactionService {
     // Delete transaction
     public void deleteTransaction(Long id) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
 
         // Revert account balance
         revertAccountBalance(transaction.getAccount(), transaction.getType(), transaction.getAmount());
@@ -162,7 +164,7 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public FinancialSummary getFinancialSummary(Long userId, LocalDateTime start, LocalDateTime end) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         BigDecimal totalIncome = transactionRepository.getTotalIncomeByUserAndDateRange(user, start, end)
                 .orElse(BigDecimal.ZERO);

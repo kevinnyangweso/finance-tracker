@@ -1,5 +1,7 @@
 package com.kevin.financetracker.service;
 
+import com.kevin.financetracker.exception.DuplicateResourceException;
+import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.model.User;
 import com.kevin.financetracker.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,12 +26,12 @@ public class UserService {
     public User createUser(User user) {
         // Check if username already exists
         if (userRepository.existsByUsername(user.getUsername())) {
-            throw new IllegalArgumentException("Username already exists: " + user.getUsername());
+            throw new DuplicateResourceException("Username already exists: " + user.getUsername());
         }
 
         // Check if email already exists
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new IllegalArgumentException("Email already exists: " + user.getEmail());
+            throw new DuplicateResourceException("Email already exists: " + user.getEmail());
         }
 
         return userRepository.save(user);
@@ -62,7 +64,7 @@ public class UserService {
     // Update user
     public User updateUser(Long id, User userDetails) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
 
         // Update fields if provided
         if (userDetails.getFirstName() != null) {
@@ -74,7 +76,7 @@ public class UserService {
         if (userDetails.getEmail() != null && !userDetails.getEmail().equals(user.getEmail())) {
             // Check if new email is not taken by another user
             if (userRepository.existsByEmail(userDetails.getEmail())) {
-                throw new IllegalArgumentException("Email already exists: " + userDetails.getEmail());
+                throw new DuplicateResourceException("Email already exists: " + userDetails.getEmail());
             }
             user.setEmail(userDetails.getEmail());
         }
@@ -85,7 +87,7 @@ public class UserService {
     // Update password
     public void updatePassword(Long userId, String newPassword) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         user.setPassword(newPassword);
         userRepository.save(user);
     }
@@ -93,7 +95,7 @@ public class UserService {
     // Delete user
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("User not found with id: " + id);
+            throw new ResourceNotFoundException("User not found with id: " + id);
         }
         userRepository.deleteById(id);
     }

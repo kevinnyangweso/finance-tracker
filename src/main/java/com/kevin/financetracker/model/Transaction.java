@@ -1,6 +1,9 @@
 package com.kevin.financetracker.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -12,20 +15,29 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull(message = "Amount is required")
+    @Digits(integer = 15, fraction = 2, message = "Amount must have up to 15 integer digits and 2 fraction digits")
+    @DecimalMin(value = "0.01", message = "Amount must be at least 0.01")
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal amount;
 
+    @NotBlank(message = "Description is required")
+    @Size(min = 1, max = 255, message = "Description must be between 1 and 255 characters")
     @Column(length = 255)
     private String description;
 
+    @NotNull(message = "Transaction date is required")
+    @PastOrPresent(message = "Transaction date cannot be in the future")
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;
 
+    @NotNull(message = "Transaction type is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private TransactionType type;
 
     // Relationships
+    @NotNull(message = "Account is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
@@ -34,6 +46,7 @@ public class Transaction {
     @JoinColumn(name = "category_id")
     private Category category;
 
+    @NotNull(message = "User is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -43,9 +56,11 @@ public class Transaction {
     @JoinColumn(name = "transfer_to_account_id")
     private Account transferToAccount;
 
+    @Size(max = 500, message = "Notes cannot exceed 500 characters")
     @Column(length = 500)
     private String notes;
 
+    @Size(max = 100, message = "Location cannot exceed 100 characters")
     @Column(length = 100)
     private String location;
 
@@ -112,6 +127,55 @@ public class Transaction {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
+    // Custom validation methods
+    @AssertTrue(message = "Transfer transactions must specify a destination account")
+    public boolean isValidTransfer() {
+        if (TransactionType.TRANSFER.equals(this.type)) {
+            return transferToAccount != null;
+        }
+        return true; // Not a transfer, so validation passes
+    }
+
+    @AssertTrue(message = "Transfer cannot be to the same account")
+    public boolean isValidTransferAccounts() {
+        if (TransactionType.TRANSFER.equals(this.type) && transferToAccount != null) {
+            return !account.getId().equals(transferToAccount.getId());
+        }
+        return true;
+    }
+
+    @AssertTrue(message = "Income and Expense transactions must have a category")
+    public boolean hasValidCategory() {
+        if (TransactionType.INCOME.equals(this.type) || TransactionType.EXPENSE.equals(this.type)) {
+            return category != null;
+        }
+        return true; // Transfers don't require categories
+    }
+
+    @AssertTrue(message = "Category type must match transaction type")
+    public boolean isCategoryTypeValid() {
+        if (category == null) {
+            return true; // No category to validate
+        }
+
+        if (TransactionType.INCOME.equals(this.type)) {
+            return CategoryType.INCOME.equals(category.getType());
+        } else if (TransactionType.EXPENSE.equals(this.type)) {
+            return CategoryType.EXPENSE.equals(category.getType());
+        }
+        return true; // TRANSFER doesn't need category type matching
+    }
+
+    @AssertTrue(message = "Receipt image URL must be a valid URL format")
+    public boolean isValidReceiptImageUrl() {
+        if (receiptImageUrl == null || receiptImageUrl.trim().isEmpty()) {
+            return true; // Optional field
+        }
+
+        // Basic URL validation
+        return receiptImageUrl.matches("^(https?|ftp)://[^\\s/$.?#].[^\\s]*$");
+    }
+
     // Business logic methods
     public boolean isTransfer() {
         return TransactionType.TRANSFER.equals(this.type);
@@ -123,6 +187,24 @@ public class Transaction {
 
     public boolean isExpense() {
         return TransactionType.EXPENSE.equals(this.type);
+    }
+
+    @Transient
+    public boolean isRecent() {
+        if (transactionDate == null) {
+            return false;
+        }
+        LocalDateTime oneWeekAgo = LocalDateTime.now().minusWeeks(1);
+        return transactionDate.isAfter(oneWeekAgo);
+    }
+
+    @Transient
+    public boolean isLargeTransaction() {
+        if (amount == null) {
+            return false;
+        }
+        BigDecimal largeAmountThreshold = new BigDecimal("1000.00");
+        return amount.compareTo(largeAmountThreshold) > 0;
     }
 
     @Override
