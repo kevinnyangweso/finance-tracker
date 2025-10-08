@@ -1,6 +1,7 @@
 package com.kevin.financetracker.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,17 +13,23 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "Category name is required")
+    @Size(min = 1, max = 100, message = "Category name must be between 1 and 100 characters")
+    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-'.,&]+$", message = "Category name can only contain letters, numbers, spaces, and basic punctuation")
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Size(max = 255, message = "Description cannot exceed 255 characters")
     @Column(length = 255)
     private String description;
 
+    @NotNull(message = "Category type is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private CategoryType type;
 
     // Relationships
+    @NotNull(message = "User is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -84,18 +91,74 @@ public class Category {
 
     // Helper methods
     public void addSubCategory(Category subCategory) {
-        subCategories.add(subCategory);
-        subCategory.setParentCategory(this);
+        if (subCategory != null) {
+            subCategories.add(subCategory);
+            subCategory.setParentCategory(this);
+        }
     }
 
     public void addTransaction(Transaction transaction) {
-        transactions.add(transaction);
-        transaction.setCategory(this);
+        if (transaction != null) {
+            transactions.add(transaction);
+            transaction.setCategory(this);
+        }
     }
 
     public void addBudget(Budget budget) {
-        budgets.add(budget);
-        budget.setCategory(this);
+        if (budget != null) {
+            budgets.add(budget);
+            budget.setCategory(this);
+        }
+    }
+
+    // Custom validation methods
+    @AssertTrue(message = "Subcategories must have the same type as parent category")
+    public boolean isSubCategoryTypeConsistent() {
+        if (parentCategory == null) {
+            return true; // This is a top-level category
+        }
+
+        // Subcategory must have same type as parent
+        return this.type.equals(parentCategory.getType());
+    }
+
+    @AssertTrue(message = "Category cannot be its own parent")
+    public boolean isNotSelfReferencing() {
+        if (parentCategory == null) {
+            return true;
+        }
+        return !this.id.equals(parentCategory.getId());
+    }
+
+    @AssertTrue(message = "Parent category must be a top-level category (cannot have its own parent)")
+    public boolean isValidParentCategory() {
+        if (parentCategory == null) {
+            return true; // This is a top-level category
+        }
+
+        // Parent category should not have its own parent (max 2 levels deep)
+        return parentCategory.getParentCategory() == null;
+    }
+
+    // Business logic methods
+    @Transient
+    public boolean isTopLevel() {
+        return parentCategory == null;
+    }
+
+    @Transient
+    public boolean hasSubCategories() {
+        return subCategories != null && !subCategories.isEmpty();
+    }
+
+    @Transient
+    public boolean hasTransactions() {
+        return transactions != null && !transactions.isEmpty();
+    }
+
+    @Transient
+    public boolean hasBudgets() {
+        return budgets != null && !budgets.isEmpty();
     }
 
     @Override

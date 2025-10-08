@@ -1,10 +1,15 @@
 package com.kevin.financetracker.service;
 
+import com.kevin.financetracker.exception.BusinessException;
+import com.kevin.financetracker.exception.DuplicateResourceException;
+import com.kevin.financetracker.exception.ResourceNotFoundException;
+import com.kevin.financetracker.exception.ValidationException;
 import com.kevin.financetracker.model.Account;
 import com.kevin.financetracker.model.AccountType;
 import com.kevin.financetracker.model.User;
 import com.kevin.financetracker.repository.AccountRepository;
 import com.kevin.financetracker.repository.UserRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,13 +32,13 @@ public class AccountService {
     }
 
     // Create a new account for a user
-    public Account createAccount(Long userId, Account account) {
+    public Account createAccount(Long userId, @Valid Account account) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         // Check if account name already exists for this user
         if (accountRepository.existsByUserAndName(user, account.getName())) {
-            throw new IllegalArgumentException("Account name already exists for this user: " + account.getName());
+            throw new DuplicateResourceException("Account name already exists for this user: " + account.getName());
         }
 
         account.setUser(user);
@@ -56,21 +61,21 @@ public class AccountService {
     @Transactional(readOnly = true)
     public List<Account> getAccountsByUserAndType(Long userId, AccountType type) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return accountRepository.findByUserAndType(user, type);
     }
 
     // Update account
-    public Account updateAccount(Long accountId, Account accountDetails) {
+    public Account updateAccount(Long accountId, @Valid Account accountDetails) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with id: " + accountId));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
 
         // Update fields if provided
         if (accountDetails.getName() != null) {
             // Check if new name is unique for this user
             if (!account.getName().equals(accountDetails.getName()) &&
                     accountRepository.existsByUserAndName(account.getUser(), accountDetails.getName())) {
-                throw new IllegalArgumentException("Account name already exists: " + accountDetails.getName());
+                throw new DuplicateResourceException("Account name already exists: " + accountDetails.getName());
             }
             account.setName(accountDetails.getName());
         }
@@ -90,11 +95,11 @@ public class AccountService {
     // Delete account
     public void deleteAccount(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + id));
 
         // Check if account has transactions
         if (!account.getTransactions().isEmpty()) {
-            throw new IllegalStateException("Cannot delete account with existing transactions");
+            throw new BusinessException("Cannot delete account with existing transactions");
         }
 
         accountRepository.delete(account);
@@ -102,12 +107,12 @@ public class AccountService {
 
     // Deposit money to account
     public Account deposit(Long accountId, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Deposit amount must be positive");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Deposit amount must be positive");
         }
 
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with id: " + accountId));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
 
         account.deposit(amount);
         return accountRepository.save(account);
@@ -115,12 +120,12 @@ public class AccountService {
 
     // Withdraw money from account
     public Account withdraw(Long accountId, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Withdrawal amount must be positive");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Withdrawal amount must be positive");
         }
 
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new IllegalArgumentException("Account not found with id: " + accountId));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
 
         account.withdraw(amount);
         return accountRepository.save(account);
@@ -130,24 +135,24 @@ public class AccountService {
     @Transactional(readOnly = true)
     public BigDecimal getTotalBalanceByUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         return accountRepository.getTotalBalanceByUser(user).orElse(BigDecimal.ZERO);
     }
 
     // Transfer money between accounts
     @Transactional
     public void transfer(Long fromAccountId, Long toAccountId, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Transfer amount must be positive");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException("Transfer amount must be positive");
         }
 
         Account fromAccount = accountRepository.findById(fromAccountId)
-                .orElseThrow(() -> new IllegalArgumentException("Source account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Source account not found with id: " + fromAccountId));
         Account toAccount = accountRepository.findById(toAccountId)
-                .orElseThrow(() -> new IllegalArgumentException("Destination account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Destination account not found with id: " + toAccountId));
 
         if (fromAccount.getId().equals(toAccount.getId())) {
-            throw new IllegalArgumentException("Cannot transfer to the same account");
+            throw new BusinessException("Cannot transfer to the same account");
         }
 
         // Withdraw from source account

@@ -1,5 +1,6 @@
 package com.kevin.financetracker.controller;
 
+import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.model.User;
 import com.kevin.financetracker.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,8 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,13 +27,9 @@ public class UserController {
 
     // Create a new user
     @PostMapping
-    public ResponseEntity<?> createUser(@Valid @RequestBody User user) {
-        try {
-            User createdUser = userService.createUser(user);
-            return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
+        User createdUser = userService.createUser(user);
+        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
 
     // Get all users
@@ -42,82 +41,95 @@ public class UserController {
 
     // Get user by ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable Long id) {
-        Optional<User> user = userService.getUserById(id);
-        if (user.isPresent()) {
-            return new ResponseEntity<>(user.get(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("User not found with id: " + id, HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        User user = userService.getUserById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+        return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     // Get user by username
     @GetMapping("/username/{username}")
-    public ResponseEntity<?> getUserByUsername(@PathVariable String username) {
-        Optional<User> user = userService.getUserByUsername(username);
-        if (user.isPresent()) {
-            return new ResponseEntity<>(user.get(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("User not found with username: " + username, HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
+        validateUsernameFormat(username);
+        User user = userService.getUserByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+        return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     // Get user by email
     @GetMapping("/email/{email}")
-    public ResponseEntity<?> getUserByEmail(@PathVariable String email) {
-        Optional<User> user = userService.getUserByEmail(email);
-        if (user.isPresent()) {
-            return new ResponseEntity<>(user.get(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("User not found with email: " + email, HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+        validateEmailFormat(email);
+        User user = userService.getUserByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+        return new ResponseEntity<>(user, HttpStatus.OK);
     }
 
     // Update user
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody User userDetails) {
-        try {
-            User updatedUser = userService.updateUser(id, userDetails);
-            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody User userDetails) {
+        User updatedUser = userService.updateUser(id, userDetails);
+        return new ResponseEntity<>(updatedUser, HttpStatus.OK);
     }
 
     // Update user password
     @PatchMapping("/{id}/password")
-    public ResponseEntity<?> updatePassword(@PathVariable Long id, @RequestBody PasswordUpdateRequest request) {
-        try {
-            userService.updatePassword(id, request.getNewPassword());
-            return new ResponseEntity<>("Password updated successfully", HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<String> updatePassword(@PathVariable Long id,
+                                                 @Valid @RequestBody PasswordUpdateRequest request) {
+        userService.updatePassword(id, request.getNewPassword());
+        return new ResponseEntity<>("Password updated successfully", HttpStatus.OK);
     }
 
     // Delete user
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
-        try {
-            userService.deleteUser(id);
-            return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return new ResponseEntity<>("User deleted successfully", HttpStatus.OK);
     }
 
     // Search users by name
     @GetMapping("/search")
-    public ResponseEntity<List<User>> searchUsersByName(@RequestParam String name) {
+    public ResponseEntity<List<User>> searchUsersByName(@RequestParam @NotBlank String name) {
+        if (name.trim().length() < 2) {
+            throw new IllegalArgumentException("Search term must be at least 2 characters long");
+        }
+
         List<User> users = userService.searchUsersByName(name);
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
-    // DTO for password update
+    // Validation helper methods
+    private void validateUsernameFormat(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be empty");
+        }
+        if (username.length() < 3 || username.length() > 50) {
+            throw new IllegalArgumentException("Username must be between 3 and 50 characters");
+        }
+        if (!username.matches("^[a-zA-Z0-9_]+$")) {
+            throw new IllegalArgumentException("Username can only contain letters, numbers, and underscores");
+        }
+    }
+
+    private void validateEmailFormat(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be empty");
+        }
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new IllegalArgumentException("Invalid email format");
+        }
+    }
+
+    // DTO for password update with validation
     public static class PasswordUpdateRequest {
+        @NotBlank(message = "New password is required")
+        @Size(min = 8, message = "Password must be at least 8 characters long")
+        @Pattern(
+                regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$",
+                message = "Password must contain at least one digit, one lowercase letter, one uppercase letter, one special character, and no whitespace"
+        )
         private String newPassword;
 
-        // Getters and setters
         public String getNewPassword() { return newPassword; }
         public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
     }

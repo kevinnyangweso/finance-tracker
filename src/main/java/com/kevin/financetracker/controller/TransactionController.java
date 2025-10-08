@@ -1,5 +1,6 @@
 package com.kevin.financetracker.controller;
 
+import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.model.Transaction;
 import com.kevin.financetracker.model.TransactionType;
 import com.kevin.financetracker.service.TransactionService;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users/{userId}/transactions")
@@ -27,13 +27,9 @@ public class TransactionController {
 
     // Create a new transaction
     @PostMapping
-    public ResponseEntity<?> createTransaction(@PathVariable Long userId, @Valid @RequestBody Transaction transaction) {
-        try {
-            Transaction createdTransaction = transactionService.createTransaction(userId, transaction);
-            return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+    public ResponseEntity<Transaction> createTransaction(@PathVariable Long userId, @Valid @RequestBody Transaction transaction) {
+        Transaction createdTransaction = transactionService.createTransaction(userId, transaction);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     // Get all transactions for user
@@ -45,13 +41,12 @@ public class TransactionController {
 
     // Get transaction by ID
     @GetMapping("/{transactionId}")
-    public ResponseEntity<?> getTransactionById(@PathVariable Long userId, @PathVariable Long transactionId) {
-        Optional<Transaction> transaction = transactionService.getTransactionById(transactionId);
-        if (transaction.isPresent() && transaction.get().getUser().getId().equals(userId)) {
-            return new ResponseEntity<>(transaction.get(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>("Transaction not found", HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<Transaction> getTransactionById(@PathVariable Long userId, @PathVariable Long transactionId) {
+        Transaction transaction = transactionService.getTransactionById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+
+        verifyTransactionOwnership(userId, transaction);
+        return new ResponseEntity<>(transaction, HttpStatus.OK);
     }
 
     // Get transactions within date range
@@ -61,6 +56,7 @@ public class TransactionController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
 
+        validateDateRange(start, end);
         List<Transaction> transactions = transactionService.getTransactionsByUserAndDateRange(userId, start, end);
         return new ResponseEntity<>(transactions, HttpStatus.OK);
     }
@@ -74,51 +70,76 @@ public class TransactionController {
 
     // Update transaction
     @PutMapping("/{transactionId}")
-    public ResponseEntity<?> updateTransaction(@PathVariable Long userId, @PathVariable Long transactionId,
-                                               @Valid @RequestBody Transaction transactionDetails) {
-        try {
-            Transaction updatedTransaction = transactionService.updateTransaction(transactionId, transactionDetails);
-            return new ResponseEntity<>(updatedTransaction, HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<Transaction> updateTransaction(@PathVariable Long userId, @PathVariable Long transactionId,
+                                                         @Valid @RequestBody Transaction transactionDetails) {
+        Transaction existingTransaction = transactionService.getTransactionById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+
+        verifyTransactionOwnership(userId, existingTransaction);
+
+        Transaction updatedTransaction = transactionService.updateTransaction(transactionId, transactionDetails);
+        return new ResponseEntity<>(updatedTransaction, HttpStatus.OK);
     }
 
     // Delete transaction
     @DeleteMapping("/{transactionId}")
-    public ResponseEntity<?> deleteTransaction(@PathVariable Long userId, @PathVariable Long transactionId) {
-        try {
-            transactionService.deleteTransaction(transactionId);
-            return new ResponseEntity<>("Transaction deleted successfully", HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<String> deleteTransaction(@PathVariable Long userId, @PathVariable Long transactionId) {
+        Transaction transaction = transactionService.getTransactionById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+
+        verifyTransactionOwnership(userId, transaction);
+
+        transactionService.deleteTransaction(transactionId);
+        return new ResponseEntity<>("Transaction deleted successfully", HttpStatus.OK);
     }
 
     // Get financial summary
     @GetMapping("/financial-summary")
-    public ResponseEntity<?> getFinancialSummary(
+    public ResponseEntity<TransactionService.FinancialSummary> getFinancialSummary(
             @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
 
-        try {
-            TransactionService.FinancialSummary summary = transactionService.getFinancialSummary(userId, start, end);
-            return new ResponseEntity<>(summary, HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
-        }
+        validateDateRange(start, end);
+        TransactionService.FinancialSummary summary = transactionService.getFinancialSummary(userId, start, end);
+        return new ResponseEntity<>(summary, HttpStatus.OK);
     }
 
     // Get recent transactions
     @GetMapping("/recent")
     public ResponseEntity<List<Transaction>> getRecentTransactions(@PathVariable Long userId,
                                                                    @RequestParam(defaultValue = "10") int limit) {
-        // Note: You'll need to add this method to your service
+        if (limit <= 0 || limit > 100) {
+            throw new IllegalArgumentException("Limit must be between 1 and 100");
+        }
+
         List<Transaction> transactions = transactionService.getTransactionsByUser(userId);
         if (transactions.size() > limit) {
             transactions = transactions.subList(0, limit);
         }
         return new ResponseEntity<>(transactions, HttpStatus.OK);
+    }
+
+    // Security helper method
+    private void verifyTransactionOwnership(Long userId, Transaction transaction) {
+        if (!transaction.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Transaction not found for this user");
+        }
+    }
+
+    // Date validation helper method
+    private void validateDateRange(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) {
+            throw new IllegalArgumentException("Both start and end dates are required");
+        }
+
+        if (start.isAfter(end)) {
+            throw new IllegalArgumentException("Start date cannot be after end date");
+        }
+
+        // Prevent querying too large date ranges
+        if (start.plusYears(1).isBefore(end)) {
+            throw new IllegalArgumentException("Date range cannot exceed 1 year");
+        }
     }
 }
