@@ -1,33 +1,41 @@
 package com.kevin.financetracker.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDateTime;
+import java.util.Map;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ErrorResponse {
-    private int status;
+    private int statusCode;
     private String error;
     private String message;
     private String path;
-
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
+    private Map<String, String> details;
 
     // Constructors
-    public ErrorResponse() {
-        this.timestamp = LocalDateTime.now();
-    }
+    public ErrorResponse() {}
 
-    public ErrorResponse(int status, String error, String message, String path) {
-        this();
-        this.status = status;
+    public ErrorResponse(int statusCode, String error, String message, String path, LocalDateTime timestamp) {
+        this.statusCode = statusCode;
         this.error = error;
         this.message = message;
         this.path = path;
+        this.timestamp = timestamp;
+    }
+
+    public ErrorResponse(int statusCode, String error, String message, String path, LocalDateTime timestamp, Map<String, String> details) {
+        this.statusCode = statusCode;
+        this.error = error;
+        this.message = message;
+        this.path = path;
+        this.timestamp = timestamp;
+        this.details = details;
     }
 
     // Getters and Setters
-    public int getStatus() { return status; }
-    public void setStatus(int status) { this.status = status; }
+    public int getStatusCode() { return statusCode; }
+    public void setStatusCode(int statusCode) { this.statusCode = statusCode; }
 
     public String getError() { return error; }
     public void setError(String error) { this.error = error; }
@@ -40,4 +48,7 @@ public class ErrorResponse {
 
     public LocalDateTime getTimestamp() { return timestamp; }
     public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+
+    public Map<String, String> getDetails() { return details; }
+    public void setDetails(Map<String, String> details) { this.details = details; }
 }
