@@ -1,5 +1,8 @@
 package com.kevin.financetracker.service;
 
+import com.kevin.financetracker.dto.TransactionRequest;
+import com.kevin.financetracker.dto.TransactionResponse;
+import com.kevin.financetracker.dto.UpdateTransactionRequest;
 import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.exception.ValidationException;
 import com.kevin.financetracker.model.*;
@@ -15,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -40,11 +44,12 @@ public class TransactionService {
     }
 
     // Create a new transaction
-    public Transaction createTransaction(Long userId, Transaction transaction) {
+    public TransactionResponse createTransaction(TransactionRequest request, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        Account account = accountRepository.findById(transaction.getAccount().getId())
+        // Validate and get account
+        Account account = accountRepository.findById(request.accountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         // Verify account belongs to user
@@ -52,9 +57,10 @@ public class TransactionService {
             throw new ValidationException("Account does not belong to user");
         }
 
+        // Validate and get category if provided
         Category category = null;
-        if (transaction.getCategory() != null && transaction.getCategory().getId() != null) {
-            category = categoryRepository.findById(transaction.getCategory().getId())
+        if (request.categoryId() != null) {
+            category = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
             // Verify category belongs to user
@@ -63,6 +69,14 @@ public class TransactionService {
             }
         }
 
+        // Create transaction entity from request
+        Transaction transaction = new Transaction();
+        transaction.setAmount(request.amount());
+        transaction.setDescription(request.description());
+        transaction.setType(request.type());
+        transaction.setTransactionDate(request.transactionDate() != null ?
+                request.transactionDate() : LocalDateTime.now());
+        transaction.setNotes(request.notes());
         transaction.setUser(user);
         transaction.setAccount(account);
         transaction.setCategory(category);
@@ -77,7 +91,7 @@ public class TransactionService {
             budgetService.updateBudgetSpentAmount(userId, category.getId(), transaction.getAmount());
         }
 
-        return savedTransaction;
+        return convertToResponse(savedTransaction);
     }
 
     // Get transaction by ID
@@ -110,43 +124,63 @@ public class TransactionService {
         return transactionRepository.findByUserAndType(user, type);
     }
 
-    // Update transaction
-    public Transaction updateTransaction(Long transactionId, Transaction transactionDetails) {
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getTransactionResponsesByUser(Long userId) {
+        return getTransactionsByUser(userId).stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // Update transaction using DTO
+    public TransactionResponse updateTransaction(Long transactionId, UpdateTransactionRequest request, Long userId) {
         Transaction transaction = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
+
+        // Verify transaction belongs to user
+        if (!transaction.getUser().getId().equals(userId)) {
+            throw new ValidationException("Transaction does not belong to user");
+        }
 
         // Store old values for balance adjustment
         BigDecimal oldAmount = transaction.getAmount();
         TransactionType oldType = transaction.getType();
         Account oldAccount = transaction.getAccount();
 
-        // Update fields if provided
-        if (transactionDetails.getAmount() != null) {
-            transaction.setAmount(transactionDetails.getAmount());
+        // Update fields if provided in request
+        if (request.amount() != null) {
+            transaction.setAmount(request.amount());
         }
-        if (transactionDetails.getDescription() != null) {
-            transaction.setDescription(transactionDetails.getDescription());
+        if (request.description() != null) {
+            transaction.setDescription(request.description());
         }
-        if (transactionDetails.getTransactionDate() != null) {
-            transaction.setTransactionDate(transactionDetails.getTransactionDate());
+        if (request.transactionDate() != null) {
+            transaction.setTransactionDate(request.transactionDate());
         }
-        if (transactionDetails.getType() != null) {
-            transaction.setType(transactionDetails.getType());
+        if (request.type() != null) {
+            transaction.setType(request.type());
         }
-        if (transactionDetails.getCategory() != null && transactionDetails.getCategory().getId() != null) {
-            Category category = categoryRepository.findById(transactionDetails.getCategory().getId())
+        if (request.notes() != null) {
+            transaction.setNotes(request.notes());
+        }
+
+        // Handle category update if provided
+        if (request.categoryId() != null) {
+            Category category = categoryRepository.findById(request.categoryId())
                     .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+
+            // Verify category belongs to user
+            if (!category.getUser().getId().equals(userId)) {
+                throw new ValidationException("Category does not belong to user");
+            }
             transaction.setCategory(category);
-        }
-        if (transactionDetails.getNotes() != null) {
-            transaction.setNotes(transactionDetails.getNotes());
         }
 
         // Revert old balance and apply new balance
         revertAccountBalance(oldAccount, oldType, oldAmount);
         updateAccountBalance(transaction.getAccount(), transaction.getType(), transaction.getAmount());
 
-        return transactionRepository.save(transaction);
+        Transaction updatedTransaction = transactionRepository.save(transaction);
+        return convertToResponse(updatedTransaction);
     }
 
     // Delete transaction
@@ -205,6 +239,20 @@ public class TransactionService {
                 break;
         }
         accountRepository.save(account);
+    }
+
+    public TransactionResponse convertToResponse(Transaction transaction) {
+        return new TransactionResponse(
+                transaction.getId(),
+                transaction.getAmount(),
+                transaction.getDescription(),
+                transaction.getType(),
+                transaction.getAccount() != null ? transaction.getAccount().getName() : null,
+                transaction.getCategory() != null ? transaction.getCategory().getName() : null,
+                transaction.getTransactionDate(),
+                transaction.getCreatedAt(),
+                transaction.getNotes()
+        );
     }
 
     // DTO for financial summary
