@@ -114,11 +114,9 @@ public class Category {
     // Custom validation methods
     @AssertTrue(message = "Subcategories must have the same type as parent category")
     public boolean isSubCategoryTypeConsistent() {
-        if (parentCategory == null) {
-            return true; // This is a top-level category
+        if (parentCategory == null || this.type == null || parentCategory.getType() == null) {
+            return true; // Let @NotNull handle null type cases
         }
-
-        // Subcategory must have same type as parent
         return this.type.equals(parentCategory.getType());
     }
 

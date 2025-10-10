@@ -40,7 +40,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByUserAndAmountLessThan(User user, BigDecimal amount);
 
     // Find transactions by description (search)
-    List<Transaction> findByUserAndDescriptionContainingIgnoreCase(User user, String description);
+    @Query("SELECT t FROM Transaction t WHERE t.user = :user AND LOWER(t.description) LIKE LOWER(CONCAT('%', :description, '%'))")
+    List<Transaction> findByUserAndDescriptionContainingIgnoreCase(
+            @Param("user") User user,
+            @Param("description")
+            String description);
 
     // Custom query to get total income for a user in date range
     @Query("SELECT SUM(t.amount) FROM Transaction t WHERE t.user = :user AND t.type = 'INCOME' AND t.transactionDate BETWEEN :start AND :end")
@@ -63,6 +67,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     // Custom query to get monthly summary
     @Query("SELECT YEAR(t.transactionDate), MONTH(t.transactionDate), t.type, SUM(t.amount) " +
             "FROM Transaction t WHERE t.user = :user AND t.transactionDate BETWEEN :start AND :end " +
+            "AND t.type IN (com.kevin.financetracker.model.TransactionType.INCOME, com.kevin.financetracker.model.TransactionType.EXPENSE) " +
             "GROUP BY YEAR(t.transactionDate), MONTH(t.transactionDate), t.type " +
             "ORDER BY YEAR(t.transactionDate) DESC, MONTH(t.transactionDate) DESC")
     List<Object[]> getMonthlySummary(
