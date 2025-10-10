@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +12,11 @@ import java.util.List;
 @Entity
 @Table(name = "users")
 public class User {
+
+    // Role enum for better type safety
+    public enum Role {
+        USER, ADMIN, MODERATOR
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,10 +36,6 @@ public class User {
 
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters long")
-    @Pattern(
-            regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=!])(?=\\S+$).{8,}$",
-            message = "Password must contain at least one digit, one lowercase letter, one uppercase letter, one special character, and no whitespace"
-    )
     @Column(nullable = false, length = 255)
     private String password;
 
@@ -49,6 +51,11 @@ public class User {
     @Column(name = "last_name", length = 50)
     private String lastName;
 
+    @NotNull(message = "Role is required")
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Role role = Role.USER;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -56,6 +63,25 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
+    @NotNull(message = "Enabled flag is required")
+    @Column(nullable = false)
+    private boolean enabled = true;
+
+    @NotNull(message = "Account non-expired flag is required")
+    @Column(name = "account_non_expired", nullable = false)
+    private boolean accountNonExpired = true;
+
+    @NotNull(message = "Account non-locked flag is required")
+    @Column(name = "account_non_locked", nullable = false)
+    private boolean accountNonLocked = true;
+
+    @NotNull(message = "Credentials non-expired flag is required")
+    @Column(name = "credentials_non_expired", nullable = false)
+    private boolean credentialsNonExpired = true;
 
     // Relationships
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -106,13 +132,30 @@ public class User {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
 
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    // Collections getters and setters
+    public LocalDateTime getLastLogin() { return lastLogin; }
+    public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
+
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+    public boolean isAccountNonExpired() { return accountNonExpired; }
+    public void setAccountNonExpired(boolean accountNonExpired) { this.accountNonExpired = accountNonExpired; }
+
+    public boolean isAccountNonLocked() { return accountNonLocked; }
+    public void setAccountNonLocked(boolean accountNonLocked) { this.accountNonLocked = accountNonLocked; }
+
+    public boolean isCredentialsNonExpired() { return credentialsNonExpired; }
+    public void setCredentialsNonExpired(boolean credentialsNonExpired) { this.credentialsNonExpired = credentialsNonExpired; }
+
     public List<Account> getAccounts() { return accounts; }
     public void setAccounts(List<Account> accounts) { this.accounts = accounts; }
 
@@ -164,14 +207,11 @@ public class User {
     // Custom validation methods
     @AssertTrue(message = "Email domain must be valid")
     public boolean isValidEmailDomain() {
-        if (email == null) {
-            return true; // Let @NotBlank handle null
+        if (email == null || email.lastIndexOf('@') == -1) {
+            return true; // Let @NotBlank or @Email handle invalid cases
         }
-
-        // Basic domain validation - you can extend this with more complex rules
-        String[] commonInvalidDomains = {"example.com", "test.com", "temp.com"};
         String domain = email.substring(email.lastIndexOf('@') + 1).toLowerCase();
-
+        String[] commonInvalidDomains = {"example.com", "test.com", "temp.com"};
         for (String invalidDomain : commonInvalidDomains) {
             if (domain.equals(invalidDomain)) {
                 return false;
@@ -185,20 +225,7 @@ public class User {
         if (username == null || email == null) {
             return true; // Let other validations handle nulls
         }
-
-        // Simple check to prevent username being an email
         return !username.contains("@");
-    }
-
-    @AssertTrue(message = "Password cannot contain username or email")
-    public boolean isPasswordSecure() {
-        if (password == null || username == null || email == null) {
-            return true; // Let other validations handle nulls
-        }
-
-        String lowercasePassword = password.toLowerCase();
-        return !lowercasePassword.contains(username.toLowerCase()) &&
-                !lowercasePassword.contains(email.substring(0, email.indexOf('@')).toLowerCase());
     }
 
     // Business logic methods
@@ -212,9 +239,7 @@ public class User {
 
     @Transient
     public boolean isActive() {
-        // You can add logic here based on your business rules
-        // For example, check if user has been active recently
-        return true; // Default implementation
+        return enabled && accountNonExpired && accountNonLocked && credentialsNonExpired;
     }
 
     @Transient
@@ -227,7 +252,40 @@ public class User {
         return transactions != null ? transactions.size() : 0;
     }
 
-    // toString() method (helpful for debugging)
+    // Security-related helper methods
+    @Transient
+    public boolean hasRole(Role role) {
+        return this.role == role;
+    }
+
+    @Transient
+    public boolean isAdmin() {
+        return this.role == Role.ADMIN;
+    }
+
+    // Update last login timestamp
+    public void updateLastLogin() {
+        this.lastLogin = LocalDateTime.now();
+    }
+
+    // Lock/Unlock account methods
+    public void lockAccount() {
+        this.accountNonLocked = false;
+    }
+
+    public void unlockAccount() {
+        this.accountNonLocked = true;
+    }
+
+    // Enable/Disable account methods
+    public void disableAccount() {
+        this.enabled = false;
+    }
+
+    public void enableAccount() {
+        this.enabled = true;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -236,8 +294,10 @@ public class User {
                 ", email='" + email + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
+                ", role=" + role +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
+                ", enabled=" + enabled +
                 '}';
     }
 }

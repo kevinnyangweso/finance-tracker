@@ -138,7 +138,7 @@ public class Transaction {
 
     @AssertTrue(message = "Transfer cannot be to the same account")
     public boolean isValidTransferAccounts() {
-        if (TransactionType.TRANSFER.equals(this.type) && transferToAccount != null) {
+        if (TransactionType.TRANSFER.equals(this.type) && transferToAccount != null && account != null && account.getId() != null && transferToAccount.getId() != null) {
             return !account.getId().equals(transferToAccount.getId());
         }
         return true;

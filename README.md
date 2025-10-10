@@ -95,9 +95,34 @@ text
 - Custom exceptions for business logic
 - Global exception handler for consistent error responses
 
+### Security Implementation
+- **Spring Security** with JWT authentication
+- **JWT Authentication Filter** for request validation
+- **Secure endpoints** with role-based access
+- **Password encryption** using BCrypt
+
+### Enhanced Data Transfer
+- **Request DTOs** for input validation and type safety
+- **Response DTOs** for structured API output
+- **Comprehensive validation** with custom validators
+
+### Transaction Management
+- **CRUD operations** for transactions
+- **Custom transaction type validation**
+- **Enhanced service layer** with better error handling
+- **RESTful API** endpoints
+
+## 🛠️ Tech Stack
+
+- **Backend**: Spring Boot 3.x
+- **Security**: Spring Security + JWT
+- **Validation**: Bean Validation + Custom Validators
+- **Database**: postgres 
+- **Build Tool**: Maven
+
 ## 🚀 Quick Start
 
 ### 1. Clone and Setup
 ```bash
-git clone <repository-url>
+git clone https://github.com/kevinnyangweso/finance-tracker.git
 cd finance-tracker
