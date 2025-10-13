@@ -1,8 +1,9 @@
 package com.kevin.financetracker.controller;
 
-import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.model.Account;
 import com.kevin.financetracker.model.AccountType;
+import com.kevin.financetracker.model.CreateAccountRequest;
+import com.kevin.financetracker.model.UpdateAccountRequest;
 import com.kevin.financetracker.service.AccountService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -28,7 +29,16 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<Account> createAccount(@PathVariable Long userId, @Valid @RequestBody Account account) {
+    public ResponseEntity<Account> createAccount(@PathVariable Long userId,
+                                                 @Valid @RequestBody CreateAccountRequest request) {
+        // Convert DTO to Entity
+        Account account = new Account();
+        account.setName(request.getName());
+        account.setType(request.getType());
+        account.setBalance(request.getBalance());
+        account.setCurrency(request.getCurrency());
+        account.setDescription(request.getDescription());
+
         Account createdAccount = accountService.createAccount(userId, account);
         return new ResponseEntity<>(createdAccount, HttpStatus.CREATED);
     }
@@ -41,8 +51,7 @@ public class AccountController {
 
     @GetMapping("/{accountId}")
     public ResponseEntity<Account> getAccountById(@PathVariable Long userId, @PathVariable Long accountId) {
-        verifyAccountOwnership(userId, accountId);
-        Account account = accountService.getAccountById(accountId).get();
+        Account account = accountService.getAccountByIdAndUserId(accountId, userId);
         return new ResponseEntity<>(account, HttpStatus.OK);
     }
 
@@ -54,15 +63,26 @@ public class AccountController {
 
     @PutMapping("/{accountId}")
     public ResponseEntity<Account> updateAccount(@PathVariable Long userId, @PathVariable Long accountId,
-                                                 @Valid @RequestBody Account accountDetails) {
-        verifyAccountOwnership(userId, accountId);
+                                                 @RequestBody UpdateAccountRequest request) {
+        // Verify ownership
+        accountService.getAccountByIdAndUserId(accountId, userId);
+
+        // Convert DTO to Entity for update
+        Account accountDetails = new Account();
+        accountDetails.setName(request.getName());
+        accountDetails.setType(request.getType());
+        accountDetails.setBalance(request.getBalance());
+        accountDetails.setCurrency(request.getCurrency());
+        accountDetails.setDescription(request.getDescription());
+
         Account updatedAccount = accountService.updateAccount(accountId, accountDetails);
         return new ResponseEntity<>(updatedAccount, HttpStatus.OK);
     }
 
     @DeleteMapping("/{accountId}")
     public ResponseEntity<String> deleteAccount(@PathVariable Long userId, @PathVariable Long accountId) {
-        verifyAccountOwnership(userId, accountId);
+        // Verify ownership
+        accountService.getAccountByIdAndUserId(accountId, userId);
         accountService.deleteAccount(accountId);
         return new ResponseEntity<>("Account deleted successfully", HttpStatus.OK);
     }
@@ -70,7 +90,8 @@ public class AccountController {
     @PostMapping("/{accountId}/deposit")
     public ResponseEntity<Account> deposit(@PathVariable Long userId, @PathVariable Long accountId,
                                            @Valid @RequestBody AmountRequest request) {
-        verifyAccountOwnership(userId, accountId);
+        // Verify ownership
+        accountService.getAccountByIdAndUserId(accountId, userId);
         Account account = accountService.deposit(accountId, request.getAmount());
         return new ResponseEntity<>(account, HttpStatus.OK);
     }
@@ -78,7 +99,8 @@ public class AccountController {
     @PostMapping("/{accountId}/withdraw")
     public ResponseEntity<Account> withdraw(@PathVariable Long userId, @PathVariable Long accountId,
                                             @Valid @RequestBody AmountRequest request) {
-        verifyAccountOwnership(userId, accountId);
+        // Verify ownership
+        accountService.getAccountByIdAndUserId(accountId, userId);
         Account account = accountService.withdraw(accountId, request.getAmount());
         return new ResponseEntity<>(account, HttpStatus.OK);
     }
@@ -87,8 +109,8 @@ public class AccountController {
     public ResponseEntity<String> transfer(@PathVariable Long userId,
                                            @Valid @RequestBody TransferRequest request) {
         // Verify both accounts belong to the user
-        verifyAccountOwnership(userId, request.getFromAccountId());
-        verifyAccountOwnership(userId, request.getToAccountId());
+        accountService.getAccountByIdAndUserId(request.getFromAccountId(), userId);
+        accountService.getAccountByIdAndUserId(request.getToAccountId(), userId);
 
         accountService.transfer(request.getFromAccountId(), request.getToAccountId(), request.getAmount());
         return new ResponseEntity<>("Transfer completed successfully", HttpStatus.OK);
@@ -98,16 +120,6 @@ public class AccountController {
     public ResponseEntity<BigDecimal> getTotalBalance(@PathVariable Long userId) {
         BigDecimal totalBalance = accountService.getTotalBalanceByUser(userId);
         return new ResponseEntity<>(totalBalance, HttpStatus.OK);
-    }
-
-    // Security helper method
-    private void verifyAccountOwnership(Long userId, Long accountId) {
-        Account account = accountService.getAccountById(accountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
-
-        if (!account.getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Account not found for this user");
-        }
     }
 
     // Request DTOs with validation

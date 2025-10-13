@@ -164,4 +164,17 @@ public class AccountService {
         accountRepository.save(fromAccount);
         accountRepository.save(toAccount);
     }
+
+    // Get account by ID and verify user ownership
+    @Transactional(readOnly = true)
+    public Account getAccountByIdAndUserId(Long accountId, Long userId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
+
+        if (!account.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Account not found for this user");
+        }
+
+        return account;
+    }
 }
