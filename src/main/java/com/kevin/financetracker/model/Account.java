@@ -10,7 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "accounts")
+@Table(
+        name = "accounts",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_account_name_user",
+                        columnNames = {"name", "user_id"}
+                )
+        }
+)
 public class Account {
 
     @Id
@@ -30,7 +38,6 @@ public class Account {
 
     @NotNull(message = "Balance is required")
     @Digits(integer = 15, fraction = 2, message = "Balance must have up to 15 integer digits and 2 fraction digits")
-    @DecimalMin(value = "0.00", message = "Balance cannot be negative")
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal balance;
 
@@ -48,7 +55,6 @@ public class Account {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Relationships
     @NotNull(message = "User is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -59,19 +65,20 @@ public class Account {
 
     // Constructors
     public Account() {
-        this.balance = BigDecimal.ZERO;
     }
 
     public Account(String name, AccountType type, User user) {
-        this();
         this.name = name;
         this.type = type;
         this.user = user;
+        this.balance = BigDecimal.ZERO; // Initialize balance here
     }
 
     public Account(String name, AccountType type, BigDecimal balance, User user) {
-        this(name, type, user);
+        this.name = name;
+        this.type = type;
         this.balance = balance;
+        this.user = user;
     }
 
     // Getters and Setters
@@ -138,18 +145,15 @@ public class Account {
             return true; // Let @NotNull handle these cases
         }
 
-        // Business rules based on account type
         switch (type) {
             case CREDIT_CARD:
             case LOAN:
-                // Credit cards and loans can have negative balances (representing debt)
-                return true;
+                return true; // Credit cards and loans can have negative balances
             case CHECKING:
             case SAVINGS:
             case CASH:
             case INVESTMENT:
-                // These account types should not have negative balances
-                return balance.compareTo(BigDecimal.ZERO) >= 0;
+                return balance.compareTo(BigDecimal.ZERO) >= 0; // Non-negative balances
             default:
                 return true;
         }

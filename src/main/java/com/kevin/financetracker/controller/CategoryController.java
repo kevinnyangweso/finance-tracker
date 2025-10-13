@@ -1,10 +1,13 @@
 package com.kevin.financetracker.controller;
 
+import com.kevin.financetracker.dto.CategoryRequestDTO;
 import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.model.Category;
+import com.kevin.financetracker.dto.CategoryDTO;
 import com.kevin.financetracker.model.CategoryType;
 import com.kevin.financetracker.service.CategoryService;
-import jakarta.validation.constraints.NotBlank;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,117 +20,154 @@ import java.util.List;
 @RequestMapping("/api/users/{userId}/categories")
 public class CategoryController {
 
-    private final CategoryService categoryService;
+    private static final Logger logger = LoggerFactory.getLogger(CategoryController.class);
 
     @Autowired
-    public CategoryController(CategoryService categoryService) {
-        this.categoryService = categoryService;
-    }
+    private CategoryService categoryService;
 
-    // Create a new category
     @PostMapping
-    public ResponseEntity<Category> createCategory(@PathVariable Long userId, @Valid @RequestBody Category category) {
-        Category createdCategory = categoryService.createCategory(userId, category);
+    public ResponseEntity<CategoryDTO> createCategory(@PathVariable Long userId,
+                                                      @RequestBody Category categoryRequest) {
+        logger.info("Creating category for user {}: {}", userId, categoryRequest.getName());
+
+        // Convert CategoryRequestDTO to Category entity
+        Category category = new Category();
+        category.setName(categoryRequest.getName());
+        category.setDescription(categoryRequest.getDescription());
+        category.setType(categoryRequest.getType());
+        // User will be set by the service
+
+        CategoryDTO createdCategory = categoryService.createCategory(userId, category);
         return new ResponseEntity<>(createdCategory, HttpStatus.CREATED);
     }
 
-    // Create a subcategory
     @PostMapping("/{parentCategoryId}/subcategories")
-    public ResponseEntity<Category> createSubcategory(@PathVariable Long userId, @PathVariable Long parentCategoryId,
-                                                      @Valid @RequestBody Category subcategory) {
-        // Verify parent category belongs to user
+    public ResponseEntity<CategoryDTO> createSubcategory(@PathVariable Long userId,
+                                                         @PathVariable Long parentCategoryId,
+                                                         @RequestBody Category subcategoryRequest) {
+        logger.info("Creating subcategory for parent category {} and user {}", parentCategoryId, userId);
+
         Category parentCategory = categoryService.getCategoryById(parentCategoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + parentCategoryId));
-        verifyCategoryOwnership(userId, parentCategory);
 
-        Category createdSubcategory = categoryService.createSubcategory(parentCategoryId, subcategory);
+        if (!parentCategory.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Category not found for this user");
+        }
+
+        // Convert DTO to Entity
+        Category subcategory = new Category();
+        subcategory.setName(subcategoryRequest.getName());
+        subcategory.setDescription(subcategoryRequest.getDescription());
+        subcategory.setType(subcategoryRequest.getType());
+
+        CategoryDTO createdSubcategory = categoryService.createSubcategory(parentCategoryId, subcategory);
         return new ResponseEntity<>(createdSubcategory, HttpStatus.CREATED);
     }
 
-    // Get all categories for user
     @GetMapping
-    public ResponseEntity<List<Category>> getCategoriesByUser(@PathVariable Long userId) {
-        List<Category> categories = categoryService.getCategoriesByUser(userId);
+    public ResponseEntity<List<CategoryDTO>> getCategoriesByUser(@PathVariable Long userId) {
+        logger.info("Getting all categories for user {}", userId);
+        List<CategoryDTO> categories = categoryService.getCategoriesByUser(userId);
         return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 
-    // Get category by ID
     @GetMapping("/{categoryId}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable Long userId, @PathVariable Long categoryId) {
+    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long userId,
+                                                       @PathVariable Long categoryId) {
+        logger.info("Getting category {} for user {}", categoryId, userId);
+
         Category category = categoryService.getCategoryById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
 
-        verifyCategoryOwnership(userId, category);
-        return new ResponseEntity<>(category, HttpStatus.OK);
+        if (!category.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Category not found for this user");
+        }
+
+        CategoryDTO categoryDTO = categoryService.convertToDTO(category);
+        return new ResponseEntity<>(categoryDTO, HttpStatus.OK);
     }
 
-    // Get categories by type for user
     @GetMapping("/type/{type}")
-    public ResponseEntity<List<Category>> getCategoriesByType(@PathVariable Long userId, @PathVariable CategoryType type) {
-        List<Category> categories = categoryService.getCategoriesByUserAndType(userId, type);
+    public ResponseEntity<List<CategoryDTO>> getCategoriesByType(@PathVariable Long userId,
+                                                                 @PathVariable CategoryType type) {
+        logger.info("Getting categories of type {} for user {}", type, userId);
+        List<CategoryDTO> categories = categoryService.getCategoriesByUserAndType(userId, type);
         return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 
-    // Get top-level categories for user
     @GetMapping("/top-level")
-    public ResponseEntity<List<Category>> getTopLevelCategories(@PathVariable Long userId) {
-        List<Category> categories = categoryService.getTopLevelCategoriesByUser(userId);
+    public ResponseEntity<List<CategoryDTO>> getTopLevelCategories(@PathVariable Long userId) {
+        logger.info("Getting top-level categories for user {}", userId);
+        List<CategoryDTO> categories = categoryService.getTopLevelCategoriesByUser(userId);
         return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 
-    // Get subcategories of a parent category
     @GetMapping("/{parentCategoryId}/subcategories")
-    public ResponseEntity<List<Category>> getSubcategories(@PathVariable Long userId, @PathVariable Long parentCategoryId) {
-        // Verify parent category belongs to user
+    public ResponseEntity<List<CategoryDTO>> getSubcategories(@PathVariable Long userId,
+                                                              @PathVariable Long parentCategoryId) {
+        logger.info("Getting subcategories for parent category {} and user {}", parentCategoryId, userId);
+
         Category parentCategory = categoryService.getCategoryById(parentCategoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + parentCategoryId));
-        verifyCategoryOwnership(userId, parentCategory);
 
-        List<Category> subcategories = categoryService.getSubcategories(parentCategoryId);
+        if (!parentCategory.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Category not found for this user");
+        }
+
+        List<CategoryDTO> subcategories = categoryService.getSubcategories(parentCategoryId);
+        logger.debug("Subcategories response: {}", subcategories);
         return new ResponseEntity<>(subcategories, HttpStatus.OK);
     }
 
-    // Update category
     @PutMapping("/{categoryId}")
-    public ResponseEntity<Category> updateCategory(@PathVariable Long userId, @PathVariable Long categoryId,
-                                                   @Valid @RequestBody Category categoryDetails) {
-        // Verify category belongs to user
-        Category existingCategory = categoryService.getCategoryById(categoryId)
-                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
-        verifyCategoryOwnership(userId, existingCategory);
+    public ResponseEntity<CategoryDTO> updateCategory(@PathVariable Long userId,
+                                                      @PathVariable Long categoryId,
+                                                      @Valid @RequestBody CategoryRequestDTO categoryDetails) {
+        logger.info("Updating category {} for user {}", categoryId, userId);
 
-        Category updatedCategory = categoryService.updateCategory(categoryId, categoryDetails);
+        Category category = categoryService.getCategoryById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
+
+        if (!category.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Category not found for this user");
+        }
+
+        // Convert DTO to Entity for update
+        Category updateEntity = new Category();
+        updateEntity.setName(categoryDetails.getName());
+        updateEntity.setDescription(categoryDetails.getDescription());
+        updateEntity.setType(categoryDetails.getType());
+
+        CategoryDTO updatedCategory = categoryService.updateCategory(categoryId, updateEntity);
         return new ResponseEntity<>(updatedCategory, HttpStatus.OK);
     }
 
-    // Delete category
     @DeleteMapping("/{categoryId}")
-    public ResponseEntity<String> deleteCategory(@PathVariable Long userId, @PathVariable Long categoryId) {
-        // Verify category belongs to user
+    public ResponseEntity<String> deleteCategory(@PathVariable Long userId,
+                                                 @PathVariable Long categoryId) {
+        logger.info("Deleting category {} for user {}", categoryId, userId);
+
         Category category = categoryService.getCategoryById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
-        verifyCategoryOwnership(userId, category);
+
+        if (!category.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Category not found for this user");
+        }
 
         categoryService.deleteCategory(categoryId);
         return new ResponseEntity<>("Category deleted successfully", HttpStatus.OK);
     }
 
-    // Search categories by name for user
     @GetMapping("/search")
-    public ResponseEntity<List<Category>> searchCategoriesByName(@PathVariable Long userId,
-                                                                 @RequestParam @NotBlank String name) {
-        if (name.trim().length() < 2) {
+    public ResponseEntity<List<CategoryDTO>> searchCategoriesByName(@PathVariable Long userId,
+                                                                    @RequestParam String name) {
+        logger.info("Searching categories for user {} with name: {}", userId, name);
+
+        if (name.length() < 2) {
             throw new IllegalArgumentException("Search term must be at least 2 characters long");
         }
 
-        List<Category> categories = categoryService.searchCategoriesByName(userId, name);
+        List<CategoryDTO> categories = categoryService.searchCategoriesByName(userId, name);
         return new ResponseEntity<>(categories, HttpStatus.OK);
-    }
-
-    // Security helper method
-    private void verifyCategoryOwnership(Long userId, Category category) {
-        if (!category.getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Category not found for this user");
-        }
     }
 }

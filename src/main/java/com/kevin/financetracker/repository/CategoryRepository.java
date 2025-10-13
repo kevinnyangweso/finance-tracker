@@ -32,7 +32,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findByUserAndParentCategoryIsNull(User user);
 
     // Add this method for search functionality
-    List<Category> findByUserAndNameContainingIgnoreCase(User user, String name);
+    @Query("SELECT c FROM Category c WHERE c.user.id = :userId AND (:name IS NULL OR UPPER(c.name) LIKE UPPER(CONCAT('%', :name, '%')))")
+    List<Category> findByUserAndNameContainingIgnoreCase(@Param("userId") Long userId, @Param("name") String name);
 
     // Find categories by type and user
     List<Category> findByUserAndTypeAndParentCategoryIsNull(User user, CategoryType type);
@@ -43,4 +44,10 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     // Custom query to find categories with transaction count
     @Query("SELECT c, COUNT(t) FROM Category c LEFT JOIN c.transactions t WHERE c.user = :user GROUP BY c")
     List<Object[]> findCategoriesWithTransactionCount(@Param("user") User user);
+
+    @Query("SELECT c FROM Category c WHERE c.id = :categoryId AND c.user.id = :userId")
+    Optional<Category> findByIdAndUserId(@Param("categoryId") Long categoryId, @Param("userId") Long userId);
+
+    @Query("SELECT COUNT(c) > 0 FROM Category c WHERE c.id = :categoryId AND c.user.id = :userId")
+    boolean existsByIdAndUserId(@Param("categoryId") Long categoryId, @Param("userId") Long userId);
 }

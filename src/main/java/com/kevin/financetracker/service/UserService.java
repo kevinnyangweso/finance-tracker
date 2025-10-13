@@ -122,7 +122,7 @@ public class UserService implements UserDetailsService {
         if (userDetails.getLastName() != null) {
             user.setLastName(userDetails.getLastName());
         }
-        if (userDetails.getRole() != null) {
+        if (userDetails.getRole() != null && !userDetails.getRole().equals(user.getRole())) {
             // Restrict role changes to admins
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(User.Role.ADMIN.name()))) {

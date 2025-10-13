@@ -90,7 +90,7 @@ public class UserController {
     // Search users by name
     @GetMapping("/search")
     public ResponseEntity<List<User>> searchUsersByName(@RequestParam @NotBlank String name) {
-        if (name.trim().length() < 2) {
+        if (name == null || name.trim().length() < 2) {
             throw new IllegalArgumentException("Search term must be at least 2 characters long");
         }
 
@@ -115,7 +115,7 @@ public class UserController {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email cannot be empty");
         }
-        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+        if (!email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$")) {
             throw new IllegalArgumentException("Invalid email format");
         }
     }

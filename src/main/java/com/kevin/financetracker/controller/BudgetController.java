@@ -2,6 +2,7 @@ package com.kevin.financetracker.controller;
 
 import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.model.Budget;
+import com.kevin.financetracker.model.BudgetUpdateDTO;
 import com.kevin.financetracker.service.BudgetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -63,12 +64,10 @@ public class BudgetController {
     // Update budget
     @PutMapping("/{budgetId}")
     public ResponseEntity<Budget> updateBudget(@PathVariable Long userId, @PathVariable Long budgetId,
-                                               @Valid @RequestBody Budget budgetDetails) {
+                                               @Valid @RequestBody BudgetUpdateDTO budgetDetails) {  // ← Add @Valid here
         Budget existingBudget = budgetService.getBudgetById(budgetId)
                 .orElseThrow(() -> new ResourceNotFoundException("Budget not found with id: " + budgetId));
-
         verifyBudgetOwnership(userId, existingBudget);
-
         Budget updatedBudget = budgetService.updateBudget(budgetId, budgetDetails);
         return new ResponseEntity<>(updatedBudget, HttpStatus.OK);
     }

@@ -1,5 +1,9 @@
 package com.kevin.financetracker.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.util.ArrayList;
@@ -8,7 +12,6 @@ import java.util.List;
 @Entity
 @Table(name = "categories")
 public class Category {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -28,23 +31,27 @@ public class Category {
     @Column(nullable = false, length = 10)
     private CategoryType type;
 
-    // Relationships
     @NotNull(message = "User is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_category_id")
+    @JsonBackReference
     private Category parentCategory;
 
     @OneToMany(mappedBy = "parentCategory", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
     private List<Category> subCategories = new ArrayList<>();
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Transaction> transactions = new ArrayList<>();
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Budget> budgets = new ArrayList<>();
 
     // Constructors
@@ -122,8 +129,8 @@ public class Category {
 
     @AssertTrue(message = "Category cannot be its own parent")
     public boolean isNotSelfReferencing() {
-        if (parentCategory == null) {
-            return true;
+        if (parentCategory == null || this.id == null) {
+            return true; // No self-reference possible if parent is null or ID is not assigned
         }
         return !this.id.equals(parentCategory.getId());
     }
@@ -133,8 +140,6 @@ public class Category {
         if (parentCategory == null) {
             return true; // This is a top-level category
         }
-
-        // Parent category should not have its own parent (max 2 levels deep)
         return parentCategory.getParentCategory() == null;
     }
 

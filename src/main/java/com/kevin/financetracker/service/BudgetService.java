@@ -3,10 +3,7 @@ package com.kevin.financetracker.service;
 import com.kevin.financetracker.exception.DuplicateResourceException;
 import com.kevin.financetracker.exception.ResourceNotFoundException;
 import com.kevin.financetracker.exception.ValidationException;
-import com.kevin.financetracker.model.Budget;
-import com.kevin.financetracker.model.BudgetPeriod;
-import com.kevin.financetracker.model.Category;
-import com.kevin.financetracker.model.User;
+import com.kevin.financetracker.model.*;
 import com.kevin.financetracker.repository.BudgetRepository;
 import com.kevin.financetracker.repository.CategoryRepository;
 import com.kevin.financetracker.repository.UserRepository;
@@ -93,11 +90,27 @@ public class BudgetService {
     }
 
     // Update budget
-    public Budget updateBudget(Long budgetId, Budget budgetDetails) {
+    public Budget updateBudget(Long budgetId, BudgetUpdateDTO budgetDetails) {
         Budget budget = budgetRepository.findById(budgetId)
                 .orElseThrow(() -> new ResourceNotFoundException("Budget not found with id: " + budgetId));
 
-        // Update fields if provided
+        if (budgetDetails.getCategory() != null) {
+            Category category = categoryRepository.findById(budgetDetails.getCategory().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+            if (!category.getUser().getId().equals(budget.getUser().getId())) {
+                throw new ValidationException("Category does not belong to user");
+            }
+            budget.setCategory(category);
+        }
+
+        if (budgetDetails.getStartDate() != null && budgetDetails.getEndDate() != null) {
+            if (budgetRepository.existsByUserAndCategoryAndDateRange(
+                    budget.getUser(), budget.getCategory(),
+                    budgetDetails.getStartDate(), budgetDetails.getEndDate())) {
+                throw new DuplicateResourceException("Budget already exists for this category and date range");
+            }
+        }
+
         if (budgetDetails.getName() != null) {
             budget.setName(budgetDetails.getName());
         }
@@ -113,9 +126,14 @@ public class BudgetService {
         if (budgetDetails.getPeriod() != null) {
             budget.setPeriod(budgetDetails.getPeriod());
         }
+        // Optionally update spent if provided
+        if (budgetDetails.getSpent() != null) {
+            budget.setSpent(budgetDetails.getSpent());
+        }
 
         return budgetRepository.save(budget);
     }
+
 
     // Delete budget
     public void deleteBudget(Long id) {
@@ -134,7 +152,9 @@ public class BudgetService {
         // Find active budget for this category
         List<Budget> activeBudgets = budgetRepository.findActiveBudgetsByUser(user, LocalDate.now());
         Optional<Budget> matchingBudget = activeBudgets.stream()
-                .filter(budget -> budget.getCategory().getId().equals(categoryId))
+                .filter(budget -> budget.getCategory() != null &&
+                        budget.getCategory().getId() != null &&
+                        budget.getCategory().getId().equals(categoryId))
                 .findFirst();
 
         if (matchingBudget.isPresent()) {
@@ -171,4 +191,5 @@ public class BudgetService {
                 .orElseThrow(() -> new ResourceNotFoundException("Budget not found with id: " + budgetId));
         return budget.getProgressPercentage();
     }
+
 }
