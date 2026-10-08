@@ -1,4 +1,3 @@
---- START ---
 # Finance Tracker
 
 A personal finance management web application that helps individuals track their income and expenses, giving them a clear picture of their financial health.
@@ -364,4 +363,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 If you find this project useful, please consider giving it a star on GitHub!
---- END ---
