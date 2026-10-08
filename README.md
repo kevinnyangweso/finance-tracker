@@ -61,7 +61,7 @@ This project uses a modern, industry-standard stack built around the Java ecosys
 ### Backend
 
 - Java 21 - Programming language (LTS version)
-- Spring Boot 3.x - Application framework
+- Spring Boot 4.1.1 - Application framework
 - Spring Web (MVC) - Building REST APIs
 - Spring Data JPA - Database access layer
 - Spring Security - Authentication and authorization
