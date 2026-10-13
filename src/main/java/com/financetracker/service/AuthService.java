@@ -9,6 +9,7 @@ import com.financetracker.exception.EmailAlreadyExistsException;
 import com.financetracker.exception.InvalidCredentialsException;
 import com.financetracker.exception.UsernameAlreadyExistsException;
 import com.financetracker.repository.UserRepository;
+import com.financetracker.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,65 +18,42 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
-    // ============================================
-    // REGISTER
-    // ============================================
+    // REGISTER 
     public MessageResponse register(RegisterRequest request) {
-
-        // 1. Check if username is taken
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new UsernameAlreadyExistsException("Username is already taken");
         }
-
-        // 2. Check if email is taken
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new EmailAlreadyExistsException("Email is already in use");
         }
-
-        // 3. Hash the password
         String hashedPassword = passwordEncoder.encode(request.getPassword());
-
-        // 4. Create the User entity
-        User user = new User(
-                request.getUsername(),
-                request.getEmail(),
-                hashedPassword
-        );
-
-        // 5. Save
+        User user = new User(request.getUsername(), request.getEmail(), hashedPassword);
         userRepository.save(user);
-
-        // 6. Return
         return new MessageResponse("User registered successfully");
     }
 
-    // ============================================
-    // LOGIN
-    // ============================================
+    // LOGIN 
     public AuthResponse login(LoginRequest request) {
-
-        // 1. Find the user
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid username or password"));
 
-        // 2. Check the password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        // 3. Placeholder token (we'll replace with real JWT in Phase 6)
-        String placeholderToken = "PLACEHOLDER_TOKEN_" + user.getId();
+        // Generate a real JWT
+        String token = jwtService.generateToken(user.getUsername());
 
-        return new AuthResponse(
-                placeholderToken,
-                user.getUsername(),
-                "Login successful"
-        );
+        return new AuthResponse(token, user.getUsername(), "Login successful");
     }
 }
