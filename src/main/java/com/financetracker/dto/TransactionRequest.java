@@ -16,9 +16,8 @@ public class TransactionRequest {
     @NotNull(message = "Type is required (INCOME or EXPENSE)")
     private TransactionType type;
 
-    @NotBlank(message = "Category is required")
-    @Size(max = 50, message = "Category must not exceed 50 characters")
-    private String category;
+    @NotNull(message = "Category ID is required")
+    private Long categoryId;
 
     @NotNull(message = "Date is required")
     @PastOrPresent(message = "Date cannot be in the future")
@@ -38,8 +37,8 @@ public class TransactionRequest {
     public TransactionType getType() { return type; }
     public void setType(TransactionType type) { this.type = type; }
 
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }

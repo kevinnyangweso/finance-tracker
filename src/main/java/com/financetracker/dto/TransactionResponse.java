@@ -1,6 +1,7 @@
 package com.financetracker.dto;
 
 import com.financetracker.entity.TransactionType;
+import com.financetracker.entity.Category;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,7 +12,8 @@ public class TransactionResponse {
     private Long id;
     private BigDecimal amount;
     private TransactionType type;
-    private String category;
+    private Long categoryId;
+    private String categoryName;
     private LocalDate date;
     private String description;
     private LocalDateTime createdAt;
@@ -20,12 +22,13 @@ public class TransactionResponse {
     }
 
     public TransactionResponse(Long id, BigDecimal amount, TransactionType type,
-                               String category, LocalDate date, String description,
+                               Long categoryId, String categoryName, LocalDate date, String description,
                                LocalDateTime createdAt) {
         this.id = id;
         this.amount = amount;
         this.type = type;
-        this.category = category;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;   
         this.date = date;
         this.description = description;
         this.createdAt = createdAt;
@@ -41,8 +44,11 @@ public class TransactionResponse {
     public TransactionType getType() { return type; }
     public void setType(TransactionType type) { this.type = type; }
 
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }

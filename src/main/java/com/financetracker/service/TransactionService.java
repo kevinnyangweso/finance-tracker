@@ -3,10 +3,12 @@ package com.financetracker.service;
 import com.financetracker.dto.TransactionRequest;
 import com.financetracker.dto.TransactionResponse;
 import com.financetracker.entity.Transaction;
+import com.financetracker.entity.Category;
 import com.financetracker.entity.TransactionType;
 import com.financetracker.entity.User;
 import com.financetracker.exception.ResourceNotFoundException;
 import com.financetracker.repository.TransactionRepository;
+import com.financetracker.repository.CategoryRepository;
 import com.financetracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +22,14 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
 
     public TransactionService(TransactionRepository transactionRepository,
-                              UserRepository userRepository) {
+                              UserRepository userRepository,
+                              CategoryRepository categoryRepository) {
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     // ============================================
@@ -34,10 +39,15 @@ public class TransactionService {
     public TransactionResponse create(TransactionRequest request, String username) {
         User user = getUserByUsername(username);
 
+        Category category = categoryRepository
+            .findByIdAndUser(request.getCategoryId(), user)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Category not found with id: " + request.getCategoryId()));
+
         Transaction transaction = new Transaction(
                 request.getAmount(),
                 request.getType(),
-                request.getCategory(),
+                category,
                 request.getDate(),
                 request.getDescription(),
                 user
@@ -113,9 +123,14 @@ public class TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Transaction not found with id: " + id));
 
+        Category category = categoryRepository
+            .findByIdAndUser(request.getCategoryId(), user)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Category not found with id: " + request.getCategoryId()));
+
         transaction.setAmount(request.getAmount());
         transaction.setType(request.getType());
-        transaction.setCategory(request.getCategory());
+        transaction.setCategory(category);
         transaction.setDate(request.getDate());
         transaction.setDescription(request.getDescription());
 
@@ -149,7 +164,8 @@ public class TransactionService {
                 t.getId(),
                 t.getAmount(),
                 t.getType(),
-                t.getCategory(),
+                t.getCategory().getId(),
+                t.getCategory().getName(),
                 t.getDate(),
                 t.getDescription(),
                 t.getCreatedAt()

@@ -21,8 +21,9 @@ public class Transaction {
     @Column(nullable = false, length = 10)
     private TransactionType type;
 
-    @Column(nullable = false, length = 50)
-    private String category;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     @Column(nullable = false)
     private LocalDate date;
@@ -45,8 +46,8 @@ public class Transaction {
     public Transaction() {
     }
 
-    public Transaction(BigDecimal amount, TransactionType type, String category,
-                       LocalDate date, String description, User user) {
+    public Transaction(BigDecimal amount, TransactionType type, Category category,
+                   LocalDate date, String description, User user) {
         this.amount = amount;
         this.type = type;
         this.category = category;
@@ -77,8 +78,8 @@ public class Transaction {
     public TransactionType getType() { return type; }
     public void setType(TransactionType type) { this.type = type; }
 
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
 
     public LocalDate getDate() { return date; }
     public void setDate(LocalDate date) { this.date = date; }
