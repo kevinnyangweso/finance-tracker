@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head th:replace="~{fragments/head :: head('Transactions - Finance Tracker')}"></head>
+
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
     <div th:replace="~{fragments/header :: header}"></div>
@@ -13,26 +15,106 @@
                 <p class="text-slate-600 mt-1">All your income and expenses.</p>
             </div>
             <a th:href="@{/transactions/new}"
-               class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-lg font-semibold transition">
+                class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-lg font-semibold transition">
                 ➕ Add Transaction
             </a>
         </div>
 
+        <!-- Filter form -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            <form th:action="@{/transactions}" method="get">
+                <div class="grid md:grid-cols-4 gap-4">
+
+                    <!-- Type filter -->
+                    <div>
+                        <label for="type" class="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                        <select name="type" id="type"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="">All types</option>
+                            <option value="INCOME"
+                                th:selected="${selectedType != null and selectedType.name() == 'INCOME'}">Income
+                            </option>
+                            <option value="EXPENSE"
+                                th:selected="${selectedType != null and selectedType.name() == 'EXPENSE'}">Expense
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Category filter -->
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                        <select name="category" id="category"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="">All categories</option>
+                            <option th:each="cat : ${categories}" th:value="${cat.name}" th:text="${cat.name}"
+                                th:selected="${selectedCategory != null and selectedCategory == cat.name}">
+                                Food
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Start date -->
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-slate-700 mb-1">From</label>
+                        <input type="date" name="startDate" id="startDate" th:value="${selectedStartDate}"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+
+                    <!-- End date -->
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-slate-700 mb-1">To</label>
+                        <input type="date" name="endDate" id="endDate" th:value="${selectedEndDate}"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-4">
+                    <button type="submit"
+                        class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg font-semibold transition">
+                        Apply Filters
+                    </button>
+                    <a th:if="${hasFilter}" th:href="@{/transactions}"
+                        class="text-slate-600 hover:text-slate-900 px-5 py-2 rounded-lg font-medium transition border border-slate-300">
+                        Clear Filters
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results count -->
+        <div class="mb-4 text-sm text-slate-600">
+            Showing <span class="font-semibold" th:text="${#lists.size(transactions)}">0</span>
+            transaction<span th:if="${#lists.size(transactions) != 1}">s</span>
+        </div>
+
         <!-- Empty state -->
         <div th:if="${#lists.isEmpty(transactions)}"
-             class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
-            <div class="text-4xl mb-4">📭</div>
-            <h2 class="text-xl font-semibold mb-2">No transactions yet</h2>
-            <p class="text-slate-600 mb-6">Add your first income or expense to get started.</p>
-            <a th:href="@{/transactions/new}"
-               class="inline-block bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg font-semibold transition">
-                Add Your First Transaction
-            </a>
+            class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+
+            <div th:if="${hasFilter}">
+                <div class="text-4xl mb-4">🔍</div>
+                <h2 class="text-xl font-semibold mb-2">No matching transactions</h2>
+                <p class="text-slate-600 mb-6">Try adjusting your filters or clearing them.</p>
+                <a th:href="@{/transactions}"
+                    class="inline-block bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg font-semibold transition">
+                    Clear Filters
+                </a>
+            </div>
+
+            <div th:unless="${hasFilter}">
+                <div class="text-4xl mb-4">📭</div>
+                <h2 class="text-xl font-semibold mb-2">No transactions yet</h2>
+                <p class="text-slate-600 mb-6">Add your first income or expense to get started.</p>
+                <a th:href="@{/transactions/new}"
+                    class="inline-block bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg font-semibold transition">
+                    Add Your First Transaction
+                </a>
+            </div>
         </div>
 
         <!-- Transactions table -->
         <div th:unless="${#lists.isEmpty(transactions)}"
-             class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <table class="w-full">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
@@ -44,20 +126,19 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="tx : ${transactions}"
-                        class="border-b border-slate-100 hover:bg-slate-50 transition">
+                    <tr th:each="tx : ${transactions}" class="border-b border-slate-100 hover:bg-slate-50 transition">
                         <td class="px-6 py-4 text-slate-700 text-sm"
                             th:text="${#temporals.format(tx.date, 'MMM d, yyyy')}">Oct 13, 2026</td>
                         <td class="px-6 py-4">
                             <span class="inline-block px-3 py-1 rounded-full text-xs font-medium"
-                                  th:classappend="${tx.type.name() == 'INCOME'} ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
-                                  th:text="${tx.categoryName}">Food</span>
+                                th:classappend="${tx.type.name() == 'INCOME'} ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                                th:text="${tx.categoryName}">Food</span>
                         </td>
-                        <td class="px-6 py-4 text-slate-600 text-sm"
-                            th:text="${tx.description ?: '—'}">Lunch</td>
+                        <td class="px-6 py-4 text-slate-600 text-sm" th:text="${tx.description ?: '—'}">Lunch</td>
                         <td class="px-6 py-4 text-right font-semibold"
                             th:classappend="${tx.type.name() == 'INCOME'} ? 'text-green-600' : 'text-red-600'">
-                            <span th:text="${tx.type.name() == 'INCOME'} ? '+$' + ${#numbers.formatDecimal(tx.amount, 1, 2)} : '-$' + ${#numbers.formatDecimal(tx.amount, 1, 2)}">
+                            <span
+                                th:text="${tx.type.name() == 'INCOME'} ? '+$' + ${#numbers.formatDecimal(tx.amount, 1, 2)} : '-$' + ${#numbers.formatDecimal(tx.amount, 1, 2)}">
                                 -$45.50
                             </span>
                         </td>
@@ -66,9 +147,8 @@
                                 class="text-brand-600 hover:text-brand-800 text-sm font-medium mr-4">
                                 Edit
                             </a>
-                            <button th:attr="data-id=${tx.id}"
-                                    onclick="deleteTransaction(this.getAttribute('data-id'))"
-                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
+                            <button th:attr="data-id=${tx.id}" onclick="deleteTransaction(this.getAttribute('data-id'))"
+                                class="text-red-600 hover:text-red-800 text-sm font-medium">
                                 Delete
                             </button>
                         </td>
@@ -107,4 +187,5 @@
     </script>
 
 </body>
+
 </html>

@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.financetracker.dto.TransactionResponse;
 import com.financetracker.service.TransactionService;
 import org.springframework.web.bind.annotation.PathVariable;
+import com.financetracker.entity.TransactionType;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 @Controller
 public class WebController {
@@ -70,13 +73,37 @@ public class WebController {
     }
 
     @GetMapping("/transactions")
-    public String transactions(Authentication authentication, Model model) {
+    public String transactions(
+        @RequestParam(required = false) TransactionType type,
+        @RequestParam(required = false) String category,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+        Authentication authentication,
+        Model model) {
+
         String username = authentication.getName();
 
+        // Get filtered transactions
         model.addAttribute("transactions",
-                transactionService.getAllForUser(username));
+            transactionService.getFiltered(username, type, category, startDate, endDate));
+
+        // Get categories for the filter dropdown
         model.addAttribute("categories",
-                categoryService.getAll(username));
+            categoryService.getAll(username));
+
+        // Preserve filter state in the template
+        model.addAttribute("selectedType", type);
+        model.addAttribute("selectedCategory", category);
+        model.addAttribute("selectedStartDate", startDate);
+        model.addAttribute("selectedEndDate", endDate);
+
+        // Check if any filter is active
+        boolean hasFilter = type != null || category != null
+                || startDate != null || endDate != null;
+        model.addAttribute("hasFilter", hasFilter);
+
         model.addAttribute("username", username);
 
         return "transactions";
