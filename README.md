@@ -4,6 +4,10 @@ A personal finance management web application that helps individuals track their
 
 ---
 
+![Tests](https://github.com/kevinnyangweso/finance-tracker/actions/workflows/test.yml/badge.svg)
+
+---
+
 ## Table of Contents
 
 - [About the Project](#about-the-project)
