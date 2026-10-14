@@ -11,6 +11,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import com.financetracker.dto.TransactionResponse;
+import com.financetracker.service.TransactionService;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
 public class WebController {
@@ -93,5 +96,22 @@ public class WebController {
                 categoryService.getAll(authentication.getName()));
         model.addAttribute("username", authentication.getName());
         return "categories";
+    }
+
+    @GetMapping("/transactions/{id}/edit")
+    public String editTransactionForm(
+        @PathVariable Long id,
+        Authentication authentication,
+        Model model) {
+
+        String username = authentication.getName();
+
+        TransactionResponse transaction = transactionService.getById(id, username);
+
+        model.addAttribute("transaction", transaction);
+        model.addAttribute("categories", categoryService.getAll(username));
+        model.addAttribute("username", username);
+
+        return "edit-transaction";
     }
 }

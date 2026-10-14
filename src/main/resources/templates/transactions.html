@@ -61,7 +61,11 @@
                                 -$45.50
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right">
+                        <td td class="px-6 py-4 text-right whitespace-nowrap">
+                            <a th:href="@{/transactions/{id}/edit(id=${tx.id})}"
+                                class="text-brand-600 hover:text-brand-800 text-sm font-medium mr-4">
+                                Edit
+                            </a>
                             <button th:attr="data-id=${tx.id}"
                                     onclick="deleteTransaction(this.getAttribute('data-id'))"
                                     class="text-red-600 hover:text-red-800 text-sm font-medium">
