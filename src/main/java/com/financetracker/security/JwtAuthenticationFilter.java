@@ -5,7 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
-import com.financetracker.security.JwtAuthenticationFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,11 +19,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final CookieUtil cookieUtil;
 
     public JwtAuthenticationFilter(JwtService jwtService,
-                                   CustomUserDetailsService userDetailsService) {
+                                   CustomUserDetailsService userDetailsService,
+                                   CookieUtil cookieUtil) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.cookieUtil = cookieUtil;
     }
 
     @Override
@@ -33,53 +35,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        // 1. Read the Authorization header
+        // 1. Try to read JWT from the Authorization header
+        String jwt = null;
         final String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        }
 
-        // 2. If no header or it doesn't start with "Bearer ", skip this filter
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        // 2. If no header, try the cookie
+        if (jwt == null) {
+            jwt = cookieUtil.getJwtFromCookie(request);
+        }
+
+        // 3. If we still don't have a token, continue as anonymous
+        if (jwt == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. Extract the token (remove "Bearer " prefix)
-        final String jwt = authHeader.substring(7);
-
+        // 4. Validate and set authentication
         try {
-            // 4. Extract the username from the token
             final String username = jwtService.extractUsername(jwt);
 
-            // 5. If we got a username AND no one is authenticated yet
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                // 6. Load the user from the database
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                // 7. Validate the token
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-
-                    // 8. Create an authentication token and set it in the context
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
                                     null,
                                     userDetails.getAuthorities()
                             );
-
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request)
                     );
-
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
-            // Invalid token — continue as anonymous. Don't fail the request here.
-            // If the endpoint requires auth, Spring Security will reject it later.
             logger.warn("JWT validation failed: " + e.getMessage());
         }
 
-        // 9. Continue the filter chain
         filterChain.doFilter(request, response);
     }
 }

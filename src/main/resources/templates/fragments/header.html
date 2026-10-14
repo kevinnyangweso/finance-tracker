@@ -8,19 +8,32 @@
             💰 Finance Tracker
         </a>
         <nav class="flex items-center gap-4">
-            <a th:href="@{/}" class="text-slate-600 hover:text-brand-600 transition text-sm">
-                Home
-            </a>
-            <a th:href="@{/dashboard}" class="text-slate-600 hover:text-brand-600 transition text-sm">
-                Dashboard
-            </a>
-            <a th:href="@{/login}" class="text-slate-600 hover:text-brand-600 transition text-sm">
-                Login
-            </a>
-            <a th:href="@{/register}"
-               class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition text-sm">
-                Sign Up
-            </a>
+            <!-- Shown when NOT logged in -->
+            <th:block th:if="${#authorization == null or !#authorization.expression('isAuthenticated()')}">
+                <a th:href="@{/}" class="text-slate-600 hover:text-brand-600 transition text-sm">
+                    Home
+                </a>
+                <a th:href="@{/login}" class="text-slate-600 hover:text-brand-600 transition text-sm">
+                    Login
+                </a>
+                <a th:href="@{/register}"
+                   class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition text-sm">
+                    Sign Up
+                </a>
+            </th:block>
+
+            <!-- Shown when logged in -->
+            <th:block th:if="${#authorization != null and #authorization.expression('isAuthenticated()')}">
+                <a th:href="@{/dashboard}" class="text-slate-600 hover:text-brand-600 transition text-sm">
+                    Dashboard
+                </a>
+                <form th:action="@{/logout}" method="post" class="inline">
+                    <button type="submit"
+                            class="text-slate-600 hover:text-brand-600 transition text-sm cursor-pointer">
+                        Logout
+                    </button>
+                </form>
+            </th:block>
         </nav>
     </div>
 </header>

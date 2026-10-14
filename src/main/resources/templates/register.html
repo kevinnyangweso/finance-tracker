@@ -11,18 +11,18 @@
             <h1 class="text-2xl font-bold text-slate-900 mb-2">Create your account</h1>
             <p class="text-slate-600 mb-6">Start tracking your finances today.</p>
 
-            <!-- Error message (from server) -->
+            <!-- Error message -->
             <div th:if="${error}"
                  class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4"
                  th:text="${error}"></div>
 
-            <!-- Registration form -->
-            <form id="registerForm" class="space-y-4">
+            <!-- Register form -->
+            <form th:action="@{/register}" th:object="${registerRequest}" method="post" class="space-y-4">
                 <div>
                     <label for="username" class="block text-sm font-medium text-slate-700 mb-1">
                         Username
                     </label>
-                    <input type="text" id="username" name="username" required minlength="3"
+                    <input type="text" id="username" th:field="*{username}" required minlength="3"
                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                            placeholder="kevin">
                 </div>
@@ -31,7 +31,7 @@
                     <label for="email" class="block text-sm font-medium text-slate-700 mb-1">
                         Email
                     </label>
-                    <input type="email" id="email" name="email" required
+                    <input type="email" id="email" th:field="*{email}" required
                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                            placeholder="you@example.com">
                 </div>
@@ -40,7 +40,7 @@
                     <label for="password" class="block text-sm font-medium text-slate-700 mb-1">
                         Password
                     </label>
-                    <input type="password" id="password" name="password" required minlength="8"
+                    <input type="password" id="password" th:field="*{password}" required minlength="8"
                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
                            placeholder="At least 8 characters">
                 </div>
@@ -51,9 +51,6 @@
                 </button>
             </form>
 
-            <!-- Error display -->
-            <div id="errorBox" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mt-4"></div>
-
             <p class="text-center text-sm text-slate-600 mt-6">
                 Already have an account?
                 <a th:href="@{/login}" class="text-brand-600 hover:underline font-medium">Log in</a>
@@ -62,40 +59,6 @@
     </main>
 
     <div th:replace="~{fragments/footer :: footer}"></div>
-
-    <!-- Registration logic -->
-    <script>
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const errorBox = document.getElementById('errorBox');
-            errorBox.classList.add('hidden');
-
-            const data = {
-                username: document.getElementById('username').value,
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value
-            };
-
-            try {
-                const res = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
-                });
-
-                if (res.ok) {
-                    window.location.href = '/login';
-                } else {
-                    const err = await res.json();
-                    errorBox.textContent = err.message || 'Registration failed. Please try again.';
-                    errorBox.classList.remove('hidden');
-                }
-            } catch (err) {
-                errorBox.textContent = 'Network error. Please try again.';
-                errorBox.classList.remove('hidden');
-            }
-        });
-    </script>
 
 </body>
 </html>
