@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/head :: head('Finance Tracker - Home')}"></head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="flex-1">
+        <!-- Hero section -->
+        <section class="max-w-6xl mx-auto px-4 py-20 text-center">
+            <h1 class="text-5xl font-bold text-slate-900 mb-6">
+                Take control of your <span class="text-brand-600">finances</span>
+            </h1>
+            <p class="text-xl text-slate-600 max-w-2xl mx-auto mb-10">
+                Track income and expenses, categorize spending, and see exactly where your money goes — all in one simple app.
+            </p>
+            <div class="flex gap-4 justify-center">
+                <a th:href="@{/register}"
+                   class="bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-lg font-semibold transition">
+                    Get Started Free
+                </a>
+                <a th:href="@{/login}"
+                   class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-8 py-3 rounded-lg font-semibold transition">
+                    Log In
+                </a>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="max-w-6xl mx-auto px-4 py-16 grid md:grid-cols-3 gap-8">
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-4xl mb-4">💰</div>
+                <h3 class="text-xl font-semibold mb-2">Track Income</h3>
+                <p class="text-slate-600">Record every source of income, from salary to side gigs.</p>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-4xl mb-4">💸</div>
+                <h3 class="text-xl font-semibold mb-2">Log Expenses</h3>
+                <p class="text-slate-600">Categorize spending so you always know where your money goes.</p>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
+                <div class="text-4xl mb-4">📊</div>
+                <h3 class="text-xl font-semibold mb-2">See Your Balance</h3>
+                <p class="text-slate-600">A clear dashboard shows income, expenses, and your current balance.</p>
+            </div>
+        </section>
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+
+</body>
+</html>

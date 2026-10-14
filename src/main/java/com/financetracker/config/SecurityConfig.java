@@ -31,8 +31,14 @@ public class SecurityConfig {
         .sessionManagement(session ->
             session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
+            // Public web pages
+            .requestMatchers("/", "/login", "/register").permitAll()
+            // Static resources (CSS, JS, images)
+            .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+            // Public API endpoints
             .requestMatchers("/api/auth/**").permitAll()
             .requestMatchers("/actuator/**").permitAll()
+            // Everything else requires authentication
             .anyRequest().authenticated()
         )
         .addFilterBefore(

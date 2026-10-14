@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/head :: head('Register - Finance Tracker')}"></head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="flex-1 flex items-center justify-center px-4 py-12">
+        <div class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 w-full max-w-md">
+
+            <h1 class="text-2xl font-bold text-slate-900 mb-2">Create your account</h1>
+            <p class="text-slate-600 mb-6">Start tracking your finances today.</p>
+
+            <!-- Error message (from server) -->
+            <div th:if="${error}"
+                 class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4"
+                 th:text="${error}"></div>
+
+            <!-- Registration form -->
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-slate-700 mb-1">
+                        Username
+                    </label>
+                    <input type="text" id="username" name="username" required minlength="3"
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           placeholder="kevin">
+                </div>
+
+                <div>
+                    <label for="email" class="block text-sm font-medium text-slate-700 mb-1">
+                        Email
+                    </label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           placeholder="you@example.com">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-slate-700 mb-1">
+                        Password
+                    </label>
+                    <input type="password" id="password" name="password" required minlength="8"
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                           placeholder="At least 8 characters">
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-lg font-semibold transition">
+                    Create Account
+                </button>
+            </form>
+
+            <!-- Error display -->
+            <div id="errorBox" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mt-4"></div>
+
+            <p class="text-center text-sm text-slate-600 mt-6">
+                Already have an account?
+                <a th:href="@{/login}" class="text-brand-600 hover:underline font-medium">Log in</a>
+            </p>
+        </div>
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+
+    <!-- Registration logic -->
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorBox = document.getElementById('errorBox');
+            errorBox.classList.add('hidden');
+
+            const data = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    window.location.href = '/login';
+                } else {
+                    const err = await res.json();
+                    errorBox.textContent = err.message || 'Registration failed. Please try again.';
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorBox.textContent = 'Network error. Please try again.';
+                errorBox.classList.remove('hidden');
+            }
+        });
+    </script>
+
+</body>
+</html>
