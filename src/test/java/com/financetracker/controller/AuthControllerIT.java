@@ -1,6 +1,6 @@
 package com.financetracker.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.financetracker.dto.LoginRequest;
 import com.financetracker.dto.RegisterRequest;
 import com.financetracker.repository.UserRepository;
@@ -26,7 +26,7 @@ class AuthControllerIT {
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    private JsonMapper objectMapper;
 
     @Autowired
     private UserRepository userRepository;

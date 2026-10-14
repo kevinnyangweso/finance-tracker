@@ -39,34 +39,45 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Public web pages
-                        .requestMatchers("/", "/login", "/register", "/logout").permitAll()
-                        // Static resources
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
-                        // Public API endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        // Everything else requires authentication
-                        .anyRequest().authenticated()
-                )
-                // Redirect unauthenticated browser users to /login
-                .exceptionHandling(ex -> ex
-                        .defaultAuthenticationEntryPointFor(
-                                (request, response, authException) ->
-                                        response.sendRedirect("/login"),
-                                request -> request.getHeader("Accept") != null
-                                        && request.getHeader("Accept").contains("text/html")
-                        )
-                )
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+    
+@Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session ->
+                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                    // Public web pages
+                    .requestMatchers("/", "/login", "/register", "/logout").permitAll()
+                    // Static resources
+                    .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                    // Public API endpoints
+                    .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/actuator/**").permitAll()
+                    // Everything else requires authentication
+                    .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                    // Redirect browser requests to the login page.
+                    .defaultAuthenticationEntryPointFor(
+                            (request, response, authException) ->
+                                    response.sendRedirect("/login"),
+                            request -> request.getHeader("Accept") != null
+                                    && request.getHeader("Accept").contains("text/html")
+                    )
+                    // Return 401 for requests that do not match the HTML condition.
+                    .authenticationEntryPoint((request, response, authException) ->
+                            response.sendError(
+                                    jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED
+                            )
+                    )
+            )
+            .addFilterBefore(
+                    jwtAuthFilter,
+                    UsernamePasswordAuthenticationFilter.class
+            );
 
-        return http.build();
-    }
+    return http.build();
+}
+
 }
