@@ -33,6 +33,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     // Filter by user and category
     List<Transaction> findByUserAndCategoryOrderByDateDesc(User user, String category);
 
+    boolean existsByCategory(com.financetracker.entity.Category category);
+
     // ============================================
     // AGGREGATION QUERIES
     // ============================================

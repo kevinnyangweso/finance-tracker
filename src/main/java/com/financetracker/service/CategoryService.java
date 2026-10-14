@@ -10,6 +10,8 @@ import com.financetracker.repository.CategoryRepository;
 import com.financetracker.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.financetracker.repository.TransactionRepository;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,11 +21,14 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
 
     public CategoryService(CategoryRepository categoryRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           TransactionRepository transactionRepository) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     // CREATE
@@ -84,8 +89,16 @@ public class CategoryService {
     public void delete(Long id, String username) {
         User user = getUserByUsername(username);
         Category category = categoryRepository.findByIdAndUser(id, user)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Category not found with id: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException(
+                    "Category not found with id: " + id));
+
+        // Check if any transactions use this category
+        // We'll add this check via a new repository method
+        if (transactionRepository.existsByCategory(category)) {
+            throw new RuntimeException(
+                "Cannot delete category: it is used by existing transactions");
+        }
+
         categoryRepository.delete(category);
     }
 

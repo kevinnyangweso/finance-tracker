@@ -7,8 +7,31 @@
         <a th:href="@{/}" class="text-xl font-bold text-brand-600">
             💰 Finance Tracker
         </a>
+
         <nav class="flex items-center gap-4">
-            <!-- Shown when NOT logged in -->
+            <!-- When logged in -->
+            <th:block th:if="${#authorization != null and #authorization.expression('isAuthenticated()')}">
+                <a th:href="@{/dashboard}" class="text-slate-600 hover:text-brand-600 transition text-sm">
+                    Dashboard
+                </a>
+                <a th:href="@{/transactions}" class="text-slate-600 hover:text-brand-600 transition text-sm">
+                    Transactions
+                </a>
+                <a th:href="@{/categories}" class="text-slate-600 hover:text-brand-600 transition text-sm">
+                    Categories
+                </a>
+                <span class="text-slate-400">|</span>
+                <span class="text-slate-700 text-sm font-medium"
+                      th:text="${#authentication.getName()}">user</span>
+                <form th:action="@{/logout}" method="post" class="inline">
+                    <button type="submit"
+                            class="text-slate-600 hover:text-red-600 transition text-sm cursor-pointer">
+                        Logout
+                    </button>
+                </form>
+            </th:block>
+
+            <!-- When logged out -->
             <th:block th:if="${#authorization == null or !#authorization.expression('isAuthenticated()')}">
                 <a th:href="@{/}" class="text-slate-600 hover:text-brand-600 transition text-sm">
                     Home
@@ -20,19 +43,6 @@
                    class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg transition text-sm">
                     Sign Up
                 </a>
-            </th:block>
-
-            <!-- Shown when logged in -->
-            <th:block th:if="${#authorization != null and #authorization.expression('isAuthenticated()')}">
-                <a th:href="@{/dashboard}" class="text-slate-600 hover:text-brand-600 transition text-sm">
-                    Dashboard
-                </a>
-                <form th:action="@{/logout}" method="post" class="inline">
-                    <button type="submit"
-                            class="text-slate-600 hover:text-brand-600 transition text-sm cursor-pointer">
-                        Logout
-                    </button>
-                </form>
             </th:block>
         </nav>
     </div>

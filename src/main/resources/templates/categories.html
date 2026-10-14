@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/head :: head('Categories - Finance Tracker')}"></head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="flex-1 max-w-3xl mx-auto w-full px-4 py-8">
+
+        <h1 class="text-3xl font-bold text-slate-900 mb-2">Categories</h1>
+        <p class="text-slate-600 mb-6">Organize your transactions with categories.</p>
+
+        <!-- Add category form -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">Add a Category</h2>
+            <div id="errorBox" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4"></div>
+            <form id="catForm" class="flex gap-3">
+                <input type="text" id="name" required minlength="2" maxlength="50"
+                       class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                       placeholder="e.g., Groceries, Rent, Salary">
+                <button type="submit"
+                        class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg font-semibold transition whitespace-nowrap">
+                    Add
+                </button>
+            </form>
+        </div>
+
+        <!-- Categories list -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div th:if="${#lists.isEmpty(categories)}"
+                 class="p-12 text-center text-slate-500">
+                No categories yet. Add one above.
+            </div>
+            <ul th:unless="${#lists.isEmpty(categories)}">
+                <li th:each="cat : ${categories}"
+                    class="flex items-center justify-between px-6 py-4 border-b border-slate-100 last:border-0">
+                    <span class="font-medium text-slate-800" th:text="${cat.name}">Food</span>
+                    <button th:attr="data-id=${cat.id}, data-name=${cat.name}"
+                            onclick="deleteCategory(this.getAttribute('data-id'), this.getAttribute('data-name'))"
+                            class="text-red-600 hover:text-red-800 text-sm font-medium">
+                        Delete
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+
+    <script>
+        document.getElementById('catForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorBox = document.getElementById('errorBox');
+            errorBox.classList.add('hidden');
+
+            const data = {name: document.getElementById('name').value};
+
+            try {
+                const res = await fetch('/api/categories', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    const err = await res.json();
+                    errorBox.textContent = err.message || 'Failed to create category.';
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorBox.textContent = 'Network error.';
+                errorBox.classList.remove('hidden');
+            }
+        });
+
+        async function deleteCategory(id, name) {
+            if (!confirm('Delete category "' + name + '"? Transactions using it will also be affected.')) return;
+
+            try {
+                const res = await fetch('/api/categories/' + id, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                });
+
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to delete category. It might be in use.');
+                }
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+    </script>
+
+</body>
+</html>

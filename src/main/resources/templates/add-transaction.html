@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/head :: head('Add Transaction - Finance Tracker')}"></head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
+
+        <h1 class="text-3xl font-bold text-slate-900 mb-2">Add Transaction</h1>
+        <p class="text-slate-600 mb-6">Record a new income or expense.</p>
+
+        <!-- No categories warning -->
+        <div th:if="${#lists.isEmpty(categories)}"
+             class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-6">
+            You need at least one category first.
+            <a th:href="@{/categories}" class="underline font-medium">Create a category →</a>
+        </div>
+
+        <div id="errorBox" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4"></div>
+
+        <form id="txForm" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-4"
+              th:unless="${#lists.isEmpty(categories)}">
+
+            <div>
+                <label for="type" class="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                <select id="type" required
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="EXPENSE">Expense</option>
+                    <option value="INCOME">Income</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="categoryId" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                <select id="categoryId" required
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="">Select a category</option>
+                    <option th:each="cat : ${categories}" th:value="${cat.id}" th:text="${cat.name}">Food</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="amount" class="block text-sm font-medium text-slate-700 mb-1">Amount</label>
+                <input type="number" id="amount" required step="0.01" min="0.01"
+                       class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                       placeholder="45.50">
+            </div>
+
+            <div>
+                <label for="date" class="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                <input type="date" id="date" required
+                       class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+
+            <div>
+                <label for="description" class="block text-sm font-medium text-slate-700 mb-1">
+                    Description <span class="text-slate-400">(optional)</span>
+                </label>
+                <input type="text" id="description" maxlength="255"
+                       class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                       placeholder="Lunch with team">
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit"
+                        class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg font-semibold transition">
+                    Save Transaction
+                </button>
+                <a th:href="@{/transactions}"
+                   class="text-slate-600 hover:text-slate-900 px-6 py-2.5 rounded-lg font-medium transition">
+                    Cancel
+                </a>
+            </div>
+        </form>
+
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+
+    <script>
+        // Set today's date by default
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+        document.getElementById('txForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorBox = document.getElementById('errorBox');
+            errorBox.classList.add('hidden');
+
+            const data = {
+                type: document.getElementById('type').value,
+                categoryId: parseInt(document.getElementById('categoryId').value),
+                amount: parseFloat(document.getElementById('amount').value),
+                date: document.getElementById('date').value,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                const res = await fetch('/api/transactions', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'same-origin',
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    window.location.href = '/transactions';
+                } else {
+                    const err = await res.json();
+                    errorBox.textContent = err.message || 'Failed to save transaction.';
+                    errorBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                errorBox.textContent = 'Network error.';
+                errorBox.classList.remove('hidden');
+            }
+        });
+    </script>
+
+</body>
+</html>

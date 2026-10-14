@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head th:replace="~{fragments/head :: head('Transactions - Finance Tracker')}"></head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Transactions</h1>
+                <p class="text-slate-600 mt-1">All your income and expenses.</p>
+            </div>
+            <a th:href="@{/transactions/new}"
+               class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-lg font-semibold transition">
+                ➕ Add Transaction
+            </a>
+        </div>
+
+        <!-- Empty state -->
+        <div th:if="${#lists.isEmpty(transactions)}"
+             class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+            <div class="text-4xl mb-4">📭</div>
+            <h2 class="text-xl font-semibold mb-2">No transactions yet</h2>
+            <p class="text-slate-600 mb-6">Add your first income or expense to get started.</p>
+            <a th:href="@{/transactions/new}"
+               class="inline-block bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg font-semibold transition">
+                Add Your First Transaction
+            </a>
+        </div>
+
+        <!-- Transactions table -->
+        <div th:unless="${#lists.isEmpty(transactions)}"
+             class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="text-left px-6 py-3 text-sm font-semibold text-slate-600">Date</th>
+                        <th class="text-left px-6 py-3 text-sm font-semibold text-slate-600">Category</th>
+                        <th class="text-left px-6 py-3 text-sm font-semibold text-slate-600">Description</th>
+                        <th class="text-right px-6 py-3 text-sm font-semibold text-slate-600">Amount</th>
+                        <th class="text-right px-6 py-3 text-sm font-semibold text-slate-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="tx : ${transactions}"
+                        class="border-b border-slate-100 hover:bg-slate-50 transition">
+                        <td class="px-6 py-4 text-slate-700 text-sm"
+                            th:text="${#temporals.format(tx.date, 'MMM d, yyyy')}">Oct 13, 2026</td>
+                        <td class="px-6 py-4">
+                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium"
+                                  th:classappend="${tx.type.name() == 'INCOME'} ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'"
+                                  th:text="${tx.categoryName}">Food</span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-600 text-sm"
+                            th:text="${tx.description ?: '—'}">Lunch</td>
+                        <td class="px-6 py-4 text-right font-semibold"
+                            th:classappend="${tx.type.name() == 'INCOME'} ? 'text-green-600' : 'text-red-600'">
+                            <span th:text="${tx.type.name() == 'INCOME'} ? '+$' + ${#numbers.formatDecimal(tx.amount, 1, 2)} : '-$' + ${#numbers.formatDecimal(tx.amount, 1, 2)}">
+                                -$45.50
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button th:attr="data-id=${tx.id}"
+                                    onclick="deleteTransaction(this.getAttribute('data-id'))"
+                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const jwtToken = /*[[${#httpServletRequest.getCookies()}]]*/ null;
+
+        async function deleteTransaction(id) {
+            if (!confirm('Delete this transaction?')) return;
+
+            try {
+                const res = await fetch('/api/transactions/' + id, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                });
+
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Failed to delete transaction.');
+                }
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+        /*]]>*/
+    </script>
+
+</body>
+</html>
