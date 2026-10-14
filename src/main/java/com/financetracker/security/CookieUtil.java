@@ -14,12 +14,24 @@ public class CookieUtil {
      * Set the JWT as an HTTP-only cookie.
      * @param maxAgeSeconds how long the cookie lives (should match JWT expiration)
      */
+    @org.springframework.beans.factory.annotation.Value("${app.cookie.secure:false}")
+    private boolean secureCookie;
+
     public void setJwtCookie(HttpServletResponse response, String token, long maxAgeSeconds) {
         Cookie cookie = new Cookie(JWT_COOKIE_NAME, token);
-        cookie.setHttpOnly(true);          // JavaScript cannot read it
-        cookie.setSecure(false);            // Set to true in production (HTTPS only)
-        cookie.setPath("/");                // Valid for the whole site
+        cookie.setHttpOnly(true);
+        cookie.setSecure(secureCookie);
+        cookie.setPath("/");
         cookie.setMaxAge((int) maxAgeSeconds);
+        response.addCookie(cookie);
+    }
+
+    public void clearJwtCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie(JWT_COOKIE_NAME, "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(secureCookie);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
         response.addCookie(cookie);
     }
 

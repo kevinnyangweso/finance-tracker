@@ -367,3 +367,19 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 If you find this project useful, please consider giving it a star on GitHub!
+
+---
+
+## 📸 Screenshots
+
+### Landing Page
+![Landing Page](docs/images/landing.png)
+
+### Dashboard
+![Dashboard](docs/images/dashboard.png)
+
+### Transactions
+![Transactions](docs/images/transactions.png)
+
+### CI/CD Pipeline
+![CI](https://github.com/kevinnyangweso/finance-tracker/actions/workflows/test.yml/badge.svg)
