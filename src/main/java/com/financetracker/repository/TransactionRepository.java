@@ -69,4 +69,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Object[]> sumByCategory(
             @Param("userId") Long userId,
             @Param("type") TransactionType type);
+
+    @Query("SELECT YEAR(t.date), MONTH(t.date), t.type, SUM(t.amount) " +
+       "FROM Transaction t " +
+       "WHERE t.user.id = :userId AND t.date >= :startDate " +
+       "GROUP BY YEAR(t.date), MONTH(t.date), t.type " +
+       "ORDER BY YEAR(t.date), MONTH(t.date)")
+    List<Object[]> sumByMonth(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDate startDate);
 }

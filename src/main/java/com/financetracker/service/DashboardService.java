@@ -16,6 +16,11 @@ import java.time.LocalDate;
 import java.time.Month;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.financetracker.dto.MonthlyTrendPoint;
+import java.time.Month;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.Locale;
 
 @Service
 public class DashboardService {
@@ -76,13 +81,17 @@ public class DashboardService {
                 ))
                 .collect(Collectors.toList());
 
+        // === Monthly trend (last 6 months) ===
+        List<MonthlyTrendPoint> monthlyTrend = buildMonthlyTrend(userId);       
+
         return new DashboardResponse(
                 totalIncome,
                 totalExpenses,
                 balance,
                 transactionCount,
                 currentMonth,
-                breakdown
+                breakdown,
+                monthlyTrend
         );
     }
 
@@ -91,4 +100,48 @@ public class DashboardService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "User not found: " + username));
     }
+
+    private List<MonthlyTrendPoint> buildMonthlyTrend(Long userId) {
+    LocalDate today = LocalDate.now();
+    LocalDate startDate = today.minusMonths(5).withDayOfMonth(1);
+
+    // Fetch raw rows from the DB
+    List<Object[]> rows = transactionRepository.sumByMonth(userId, startDate);
+
+    // Build a map: "YYYY-MM" → {income, expenses}
+    java.util.Map<String, BigDecimal> incomeMap = new java.util.HashMap<>();
+    java.util.Map<String, BigDecimal> expenseMap = new java.util.HashMap<>();
+
+    for (Object[] row : rows) {
+        Integer year = ((Number) row[0]).intValue();
+        Integer month = ((Number) row[1]).intValue();
+        TransactionType type = (TransactionType) row[2];
+        BigDecimal sum = (BigDecimal) row[3];
+
+        String key = year + "-" + String.format("%02d", month);
+
+        if (type == TransactionType.INCOME) {
+            incomeMap.put(key, sum);
+        } else {
+            expenseMap.put(key, sum);
+        }
+    }
+
+    // Build the final list — one point per month, in chronological order
+    List<MonthlyTrendPoint> trend = new ArrayList<>();
+    for (int i = 5; i >= 0; i--) {
+        LocalDate monthStart = today.minusMonths(i).withDayOfMonth(1);
+        String key = monthStart.getYear() + "-" + String.format("%02d", monthStart.getMonthValue());
+        String label = monthStart.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH)
+                + " " + monthStart.getYear();
+
+        trend.add(new MonthlyTrendPoint(
+                label,
+                incomeMap.getOrDefault(key, BigDecimal.ZERO),
+                expenseMap.getOrDefault(key, BigDecimal.ZERO)
+        ));
+    }
+
+    return trend;
+}
 }

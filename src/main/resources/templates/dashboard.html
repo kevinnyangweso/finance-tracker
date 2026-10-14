@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head th:replace="~{fragments/head :: head('Dashboard - Finance Tracker')}"></head>
+
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
     <div th:replace="~{fragments/header :: header}"></div>
@@ -43,7 +45,7 @@
                     <span class="text-2xl">📊</span>
                 </div>
                 <div class="text-3xl font-bold"
-                     th:classappend="${summary.balance.signum() >= 0} ? 'text-brand-600' : 'text-red-600'">
+                    th:classappend="${summary.balance.signum() >= 0} ? 'text-brand-600' : 'text-red-600'">
                     $<span th:text="${#numbers.formatDecimal(summary.balance, 1, 2)}">0.00</span>
                 </div>
             </div>
@@ -71,7 +73,7 @@
                 <div>
                     <div class="text-sm text-slate-500 mb-1">Balance</div>
                     <div class="text-xl font-semibold"
-                         th:classappend="${summary.currentMonth.balance.signum() >= 0} ? 'text-brand-600' : 'text-red-600'">
+                        th:classappend="${summary.currentMonth.balance.signum() >= 0} ? 'text-brand-600' : 'text-red-600'">
                         $<span th:text="${#numbers.formatDecimal(summary.currentMonth.balance, 1, 2)}">0.00</span>
                     </div>
                 </div>
@@ -82,18 +84,17 @@
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
             <h2 class="text-lg font-semibold mb-4">Top Expenses by Category</h2>
 
-            <div th:if="${#lists.isEmpty(summary.categoryBreakdown)}"
-                 class="text-slate-500 text-sm py-4">
+            <div th:if="${#lists.isEmpty(summary.categoryBreakdown)}" class="text-slate-500 text-sm py-4">
                 No expenses yet. Add your first transaction to see the breakdown.
             </div>
 
             <div th:unless="${#lists.isEmpty(summary.categoryBreakdown)}" class="space-y-3">
                 <div th:each="item : ${summary.categoryBreakdown}"
-                     class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                    class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
                     <div>
                         <span class="font-medium" th:text="${item.categoryName}">Food</span>
                         <span class="text-slate-500 text-sm ml-2"
-                              th:text="'(' + ${item.transactionCount} + ' transactions)'">(1)</span>
+                            th:text="'(' + ${item.transactionCount} + ' transactions)'">(1)</span>
                     </div>
                     <div class="font-semibold text-red-600">
                         $<span th:text="${#numbers.formatDecimal(item.total, 1, 2)}">0.00</span>
@@ -102,14 +103,41 @@
             </div>
         </div>
 
+        <!-- Charts -->
+        <div class="grid md:grid-cols-2 gap-6 mb-8">
+
+            <!-- Pie chart: spending by category -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-semibold mb-4">Spending by Category</h2>
+
+                <div th:if="${#lists.isEmpty(summary.categoryBreakdown)}"
+                    class="text-slate-500 text-sm py-12 text-center">
+                    No expense data yet.
+                </div>
+
+                <div th:unless="${#lists.isEmpty(summary.categoryBreakdown)}" class="relative" style="height: 300px;">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Line chart: 6-month trend -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-semibold mb-4">Last 6 Months</h2>
+
+                <div class="relative" style="height: 300px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick actions -->
         <div class="flex gap-4">
             <a th:href="@{/transactions/new}"
-               class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+                class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-lg font-semibold transition">
                 ➕ Add Transaction
             </a>
             <a th:href="@{/transactions}"
-               class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-6 py-3 rounded-lg font-semibold transition">
+                class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-6 py-3 rounded-lg font-semibold transition">
                 View All Transactions
             </a>
         </div>
@@ -118,5 +146,120 @@
 
     <div th:replace="~{fragments/footer :: footer}"></div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+
+        // === Pie chart: category breakdown ===
+        const categoryData = /*[[${summary.categoryBreakdown}]]*/[];
+
+        const categoryCanvas = document.getElementById('categoryChart');
+        if (categoryCanvas && categoryData.length > 0) {
+            const labels = categoryData.map(c => c.categoryName);
+            const values = categoryData.map(c => Number(c.total));
+
+            // A palette of colors for the slices
+            const palette = [
+                '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#84cc16'
+            ];
+
+            new Chart(categoryCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: palette,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 12, font: { size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    return ctx.label + ': $' + ctx.parsed.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // === Line chart: monthly trend ===
+        const trendData = /*[[${summary.monthlyTrend}]]*/[];
+
+        const trendCanvas = document.getElementById('trendChart');
+        if (trendCanvas && trendData.length > 0) {
+            const labels = trendData.map(t => t.label);
+            const incomes = trendData.map(t => Number(t.income));
+            const expenses = trendData.map(t => Number(t.expenses));
+
+            new Chart(trendCanvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: incomes,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Expenses',
+                            data: expenses,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 12, font: { size: 12 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    return ctx.dataset.label + ': $' + ctx.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /*]]>*/
+    </script>
+
 </body>
+
 </html>

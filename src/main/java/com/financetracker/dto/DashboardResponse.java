@@ -11,6 +11,7 @@ public class DashboardResponse {
     private Long transactionCount;
     private MonthlySummary currentMonth;
     private List<CategoryBreakdown> categoryBreakdown;
+    private List<MonthlyTrendPoint> monthlyTrend;
 
     public DashboardResponse() {
     }
@@ -18,13 +19,15 @@ public class DashboardResponse {
     public DashboardResponse(BigDecimal totalIncome, BigDecimal totalExpenses,
                              BigDecimal balance, Long transactionCount,
                              MonthlySummary currentMonth,
-                             List<CategoryBreakdown> categoryBreakdown) {
+                             List<CategoryBreakdown> categoryBreakdown,
+                             List<MonthlyTrendPoint> monthlyTrend) {
         this.totalIncome = totalIncome;
         this.totalExpenses = totalExpenses;
         this.balance = balance;
         this.transactionCount = transactionCount;
         this.currentMonth = currentMonth;
         this.categoryBreakdown = categoryBreakdown;
+        this.monthlyTrend = monthlyTrend;
     }
 
     public BigDecimal getTotalIncome() { return totalIncome; }
@@ -46,4 +49,7 @@ public class DashboardResponse {
     public void setCategoryBreakdown(List<CategoryBreakdown> categoryBreakdown) {
         this.categoryBreakdown = categoryBreakdown;
     }
+
+    public List<MonthlyTrendPoint> getMonthlyTrend() { return monthlyTrend; }
+    public void setMonthlyTrend(List<MonthlyTrendPoint> monthlyTrend) { this.monthlyTrend = monthlyTrend; }
 }
